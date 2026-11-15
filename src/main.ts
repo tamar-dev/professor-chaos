@@ -39,7 +39,11 @@ class Laboratory extends Phaser.Scene {
   private announce:(state:ViewState)=>void=()=>{};
   constructor(){super('laboratory');}
   setReporter(fn:(state:ViewState)=>void){this.announce=fn;this.report('לחצו על התחלה כדי להעיר את המעבדה');}
-  preload(){this.load.image('laboratory','assets/lab-master.webp');this.load.svg('robot-sprite','assets/robot.svg',{width:160,height:170});this.load.svg('professor','assets/professor.svg',{width:350,height:430});}
+  preload(){
+    // NetFree and some content filters reject Phaser's SVG -> data:image/png;base64 conversion.
+    // These two SVG textures are not used by the scene. Load only the actual WebP background.
+    this.load.image('laboratory','assets/lab-master.webp');
+  }
   create(){
     this.cameras.main.setBackgroundColor('#281c28');
     this.buildStoryWorld();
