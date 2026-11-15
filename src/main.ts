@@ -260,7 +260,7 @@ class Laboratory extends Phaser.Scene {
     const core=this.add.ellipse(600,327,135,240,0x9cecf3,.45).setBlendMode(Phaser.BlendModes.ADD).setDepth(30);
     const halo=this.add.ellipse(600,327,330,420,0x8a7aff,.16).setBlendMode(Phaser.BlendModes.ADD).setDepth(27);
     this.finaleArt=[halo,outer,inner,core];
-    for(const part of this.finaleArt){part.setAlpha(0);part.setScale(.08);}
+    for(const part of this.finaleArt){(part as Phaser.GameObjects.Arc).setAlpha(0).setScale(.08);}
     this.tweens.add({targets:this.finaleArt,alpha:1,scale:1,duration:1200,ease:'Back.easeOut'});
     this.tweens.add({targets:outer,angle:3,duration:1200,yoyo:true,repeat:-1});
     this.tweens.add({targets:inner,angle:-5,duration:1400,yoyo:true,repeat:-1});
