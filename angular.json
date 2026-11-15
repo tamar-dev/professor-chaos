@@ -18,6 +18,12 @@
             "tsConfig": "tsconfig.json",
             "styles": [
               "src/styles.css"
+            ],
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "public"
+              }
             ]
           }
         },
