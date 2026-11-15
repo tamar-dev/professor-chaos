@@ -31,22 +31,21 @@ class Laboratory extends Phaser.Scene {
   private announce:(state:ViewState)=>void=()=>{};
   constructor(){super('laboratory');}
   setReporter(fn:(state:ViewState)=>void){this.announce=fn;this.report('לחצו על התחלה כדי להעיר את המעבדה');}
-  preload(){this.load.image('laboratory','assets/lab-master.webp');this.load.svg('robot-sprite','assets/robot.svg',{width:160,height:170});}
+  preload(){this.load.image('laboratory','assets/lab-master.webp');this.load.svg('robot-sprite','assets/robot.svg',{width:160,height:170});this.load.svg('professor','assets/professor.svg',{width:350,height:430});}
   create(){
     this.cameras.main.setBackgroundColor('#281c28');
-    this.buildLaboratory();
+    this.buildStoryWorld();
     const light=this.add.circle(600,300,115,0x8adce8,.08).setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({targets:light,alpha:.26,scale:1.25,duration:1900,yoyo:true,repeat:-1});
     this.addAtmosphere();
     this.machineGlow=this.add.circle(600,320,45,0xc6a5ff,.18).setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({targets:this.machineGlow,alpha:.4,scale:1.35,duration:1150,yoyo:true,repeat:-1});
     const robotShadow=this.add.ellipse(0,62,116,23,0x050a14,.55);
-    const robotSprite=this.textures.exists('robot-sprite')
-      ? this.add.image(0,0,'robot-sprite').setDisplaySize(118,126)
-      : this.add.rectangle(0,0,88,95,0x76d4c7).setStrokeStyle(5,0xd9fff0);
+    const robotSprite=this.add.circle(0,0,24,0xa8f9f4,.92).setStrokeStyle(6,0xe6ffff,.95).setBlendMode(Phaser.BlendModes.ADD);
     const aura=this.add.circle(0,0,65,0x5cefe7,.06).setStrokeStyle(2,0x9ffff5,.35);
-    this.robot=this.add.container(1000,395,[robotShadow,aura,robotSprite]).setDepth(12);
+    this.robot=this.add.container(1010,390,[robotShadow,aura,robotSprite]).setDepth(12);
     this.robot.setSize(130,145).setInteractive({useHandCursor:true});
+    robotSprite.setVisible(false);robotShadow.setVisible(false);
     this.tweens.add({targets:robotSprite,y:-11,duration:1100,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
     this.tweens.add({targets:robotShadow,scaleX:.75,alpha:.2,duration:1100,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
     this.tweens.add({targets:aura,scale:1.18,alpha:.25,duration:850,yoyo:true,repeat:-1});
@@ -59,81 +58,49 @@ class Laboratory extends Phaser.Scene {
     this.loadSave();
     this.buildCinema();
     this.drawHotspots();
-    if(this.save.robotHits>0&&!this.save.found.includes('robot'))this.robot.setPosition(this.save.robotHits===1?860:1110,225);
+    if(this.save.robotHits>0&&!this.save.found.includes('robot')){this.robot.setPosition(this.save.robotHits===1?860:1110,225);(this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(true);}
     this.focus('wide',false);
     if(this.save.stage==='finale')this.showPortal();
     this.report(this.save.stage==='intro'?'המעבדה שקטה מדי... משהו עומד לקרות!':'ברוכים השבים למעבדה! ההתקדמות נשמרה.');
   }
-  private buildLaboratory(){
-    // A single coherent, layered scene. No pre-painted characters or duplicated props.
-    const g=this.add.graphics().setDepth(0);
-    g.fillGradientStyle(0x142736,0x18293a,0x392638,0x2b2033,1);
-    g.fillRect(0,0,1200,675);
-    g.fillStyle(0x101a2b,.72);g.fillRect(0,0,1200,110);
-    for(let i=0;i<11;i++){
-      const x=i*120;
-      g.lineStyle(2,0xb77e57,.16);g.lineBetween(x,0,x+40,675);
+  private buildStoryWorld(){
+    // Preserve the richly painted laboratory as the set, then animate independent foreground layers.
+    this.add.image(600,337.5,'laboratory').setDisplaySize(1200,675).setDepth(0);
+    const shade=this.add.graphics().setDepth(1);
+    shade.fillGradientStyle(0x060914,0x060914,0x130b1d,0x130b1d,.42,.18,.35,.45);
+    shade.fillRect(0,0,1200,675);
+    // Professor lives on a separate layer; his gesture and silhouette can move independently.
+    if(this.textures.exists('professor')){
+      const professor=this.add.image(850,255,'professor').setDisplaySize(230,283).setDepth(6);
+      professor.setOrigin(.5,.5);
+      this.tweens.add({targets:professor,y:250,angle:1.6,duration:1900,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
+      const deskGlow=this.add.ellipse(848,396,230,65,0xffd0a1,.12).setDepth(5).setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({targets:deskGlow,alpha:.3,scaleX:1.2,duration:2200,yoyo:true,repeat:-1});
     }
-    g.fillGradientStyle(0x392c39,0x302635,0x171c2b,0x171c2b,1);g.fillRect(0,510,1200,165);
-    g.lineStyle(8,0xb47c56,.65);g.lineBetween(0,510,1200,510);
-    for(let i=0;i<8;i++){
-      g.lineStyle(2,0xd9a76e,.10);g.lineBetween(600,510,i*170-100,675);
-    }
-    // Tall arched windows and copper framing establish depth.
-    for(const x of [105,1095]){
-      g.fillStyle(0x09172b,1);g.fillRoundedRect(x-72,115,144,325,68);
-      g.lineStyle(10,0xa57a57,.85);g.strokeRoundedRect(x-72,115,144,325,68);
-      g.lineStyle(4,0x8be4dc,.4);g.lineBetween(x,125,x,435);
-      g.lineBetween(x-64,285,x+64,285);
-      const moon=this.add.circle(x,205,32,0x8ce8e7,.3).setBlendMode(Phaser.BlendModes.ADD).setDepth(1);
-      this.tweens.add({targets:moon,alpha:.6,duration:2200,yoyo:true,repeat:-1});
-    }
-    // Bookshelf and interactive objects in the desk area.
-    g.fillStyle(0x4a3034);g.fillRoundedRect(110,185,290,350,12);
-    g.lineStyle(9,0xb58a5e);g.strokeRoundedRect(110,185,290,350,12);
-    for(const y of [275,375,475]){g.lineStyle(10,0x9a674a);g.lineBetween(120,y,388,y);}
-    for(let i=0;i<23;i++){
-      const x=130+(i%8)*31,y=208+Math.floor(i/8)*100;
-      g.fillStyle([0x526d78,0x8e5668,0xb18a5b,0x486e63][i%4]);
-      g.fillRoundedRect(x,y,20,64+(i%3)*6,2);
-      g.lineStyle(2,0xf4d8a5,.55);g.lineBetween(x+5,y+11,x+15,y+11);
-    }
-    g.fillStyle(0x54363b);g.fillRoundedRect(150,480,210,80,7);
-    g.lineStyle(5,0xbd895d);g.strokeRoundedRect(150,480,210,80,7);
-    g.fillStyle(0xe7bb73);g.fillCircle(260,515,7);
-    // Central machine with layered silhouette, pipes, coils and an active core.
-    g.lineStyle(20,0x785b61);g.lineBetween(510,210,440,170);g.lineBetween(690,210,760,170);
-    g.lineStyle(7,0xe4a96b);g.lineBetween(510,210,440,170);g.lineBetween(690,210,760,170);
-    g.fillStyle(0x302f46);g.fillRoundedRect(460,190,280,320,28);
-    g.lineStyle(14,0xa77d66);g.strokeRoundedRect(460,190,280,320,28);
-    g.fillStyle(0x142c40);g.fillCircle(600,320,110);
-    g.lineStyle(15,0xd4a477);g.strokeCircle(600,320,110);
-    g.lineStyle(5,0x6fd7d5,.9);g.strokeCircle(600,320,85);
-    for(let i=0;i<12;i++){
-      const a=i*Math.PI/6;
-      g.fillStyle(0xf2c58b);g.fillCircle(600+Math.cos(a)*108,320+Math.sin(a)*108,5);
-    }
-    g.fillStyle(0x243b4d);g.fillRoundedRect(465,425,270,115,12);
-    g.lineStyle(7,0xc2956c);g.strokeRoundedRect(465,425,270,115,12);
-    for(const x of [510,600,690]){
-      g.fillStyle(0x182636);g.fillCircle(x,455,28);
-      g.lineStyle(5,0xe5b578);g.strokeCircle(x,455,28);
-      g.lineStyle(5,0x86e9e6);g.lineBetween(x,455,x,435);
-    }
-    g.fillStyle(0xe84954);g.fillCircle(600,400,30);
-    g.lineStyle(6,0xffc7a1);g.strokeCircle(600,400,30);
-    // Right workbench gives the robot its own visual home.
-    g.fillStyle(0x3a3849);g.fillRoundedRect(840,470,290,70,12);
-    g.lineStyle(8,0xc59a6c);g.strokeRoundedRect(840,470,290,70,12);
-    g.fillStyle(0x2b2534);g.fillRect(870,540,25,115);g.fillRect(1080,540,25,115);
-    for(const x of [865,1105]){
-      const bulb=this.add.circle(x,360,13,0x85f4e7,.7).setDepth(2);
-      this.tweens.add({targets:bulb,alpha:.25,scale:1.4,duration:1200,yoyo:true,repeat:-1});
-    }
-    const reactor=this.add.circle(600,320,67,0x72f8ee,.2).setBlendMode(Phaser.BlendModes.ADD).setDepth(2);
-    this.tweens.add({targets:reactor,scale:1.35,alpha:.55,duration:1500,yoyo:true,repeat:-1});
-    const coil=this.add.arc(600,320,92,0,270,false,0x000000,0).setStrokeStyle(4,0xb9f9ed,.7).setDepth(4);
-    this.tweens.add({targets:coil,angle:360,duration:9500,repeat:-1});
+    // Electricity traces the actual machine instead of unrelated screen-space ornaments.
+    const conduit=this.add.graphics().setDepth(7);
+    const dot=this.make.graphics({x:0,y:0});dot.fillStyle(0xa5ffff);dot.fillCircle(4,4,4);dot.generateTexture('chaos-spark',8,8);dot.destroy();
+    const sparks=this.add.particles(600,315,'chaos-spark',{speed:{min:12,max:55},scale:{start:.09,end:0},lifespan:850,frequency:110,quantity:1,blendMode:'ADD'});
+    sparks.setDepth(8);
+    const machineLight=this.add.circle(600,292,85,0x8df5ff,.09).setDepth(5).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({targets:machineLight,scale:1.28,alpha:.27,duration:1450,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
+    this.events.on(Phaser.Scenes.Events.UPDATE,()=>{
+      const t=this.time.now*.001;
+      conduit.clear();
+      for(let k=0;k<3;k++){
+        conduit.lineStyle(k===0?4:2,k===0?0x8ef8fa:k===1?0xe3a6ff:0xffdba0,.28+Math.sin(t*3+k)*.16);
+        conduit.beginPath();
+        const y=315+k*14;
+        conduit.moveTo(505,y);
+        for(let x=515;x<=690;x+=12)conduit.lineTo(x,y+Math.sin(x*.06+t*4+k)*8);
+        conduit.strokePath();
+      }
+    });
+    // Subtle foreground shadows anchor the scene.
+    const vignette=this.add.graphics().setDepth(19);
+    vignette.fillGradientStyle(0x080713,0x080713,0x080713,0x080713,.24,.24,.32,.32);
+    vignette.fillRect(0,0,1200,38);
+    vignette.fillRect(0,635,1200,40);
   }
   private addAtmosphere(){
     // Ambient particles float in the same world space as the laboratory artwork.
@@ -255,11 +222,12 @@ class Laboratory extends Phaser.Scene {
 
     this.scatter(this.robot.x,this.robot.y,7);
     if(this.save.robotHits>=3){
-      this.robotRunning=false;this.robot.setPosition(1000,395);
+      this.robotRunning=false;this.robot.setPosition(1010,390);(this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(false);
       this.collect('robot');this.report('תפסתם את הרובוט! הוא החזיר את הגביש.');
       return;
     }
     this.robotRunning=true;
+    (this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(true);
     this.focus('robots');
     const positions=[{x:860,y:225},{x:1110,y:225},{x:905,y:475},{x:1060,y:190}];
     const next=positions[(this.save.robotHits-1)%positions.length];
@@ -352,7 +320,7 @@ class Laboratory extends Phaser.Scene {
     
     for(const part of this.finaleArt)part.destroy();this.finaleArt=[];
     this.save={stage:'intro',found:[],dials:[0,0,0],robotHits:0};
-    this.robot.setPosition(1000,395);this.robot.setAngle(0);
+    this.robot.setPosition(1010,390);this.robot.setAngle(0);(this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(false);
     this.tweens.killTweensOf(this.machineGlow);this.machineGlow.setScale(1).setAlpha(.2);
     this.tweens.add({targets:this.machineGlow,alpha:.4,scale:1.35,duration:1150,yoyo:true,repeat:-1});
     this.drawHotspots();this.focus('wide');this.report('המעבדה מוכנה להרפתקה חדשה. לחצו על הכפתור האדום!');
