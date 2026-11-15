@@ -171,7 +171,7 @@ class Laboratory extends Phaser.Scene {
     this.cameras.main.shake(1300,.012);this.cameras.main.flash(800,165,110,245);
     this.scatter(600,310,70);
     this.tweens.add({targets:this.machineGlow,scale:5,alpha:.8,duration:1400,yoyo:true});
-    this.time.delayedCall(1000,()=>this.report('🎉 הצלחתם! המכונה התעוררה... וייצרה ברווז גומי ענק! 🦆 המשך יבוא!'));
+    this.time.delayedCall(1000,()=>{if(this.save.stage==='finale')this.report('🎉 הצלחתם! המכונה התעוררה... וייצרה ברווז גומי ענק! 🦆 המשך יבוא!');});
     this.report('המכונה מתעוררת! תחזיקו חזק...');
   }
   private showDuck(){
@@ -213,6 +213,8 @@ class Laboratory extends Phaser.Scene {
     for(const part of this.finaleArt)part.destroy();this.finaleArt=[];
     this.save={stage:'intro',found:[],dials:[0,0,0],robotHits:0};
     this.robot.setPosition(1000,395);this.robot.setAngle(0);
+    this.tweens.killTweensOf(this.machineGlow);this.machineGlow.setScale(1).setAlpha(.2);
+    this.tweens.add({targets:this.machineGlow,alpha:.4,scale:1.35,duration:1150,yoyo:true,repeat:-1});
     this.drawHotspots();this.focus('wide');this.report('המעבדה מוכנה להרפתקה חדשה. לחצו על הכפתור האדום!');
   }
 }
