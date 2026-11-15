@@ -22,6 +22,7 @@ class Laboratory extends Phaser.Scene {
   private markers:Phaser.GameObjects.GameObject[]=[];
   private machineGlow!:Phaser.GameObjects.Arc;
   private robotRunning=false;
+  private finaleArt:Phaser.GameObjects.GameObject[]=[];
   private announce:(state:ViewState)=>void=()=>{};
   constructor(){super('laboratory');}
   setReporter(fn:(state:ViewState)=>void){this.announce=fn;this.report('לחצו על התחלה כדי להעיר את המעבדה');}
@@ -43,6 +44,8 @@ class Laboratory extends Phaser.Scene {
     const antenna=this.add.circle(0,-33,7,0xffd489);
     this.robot=this.add.container(1000,395,[body,eye1,eye2,antenna]).setDepth(9);
     this.robot.setSize(75,75).setInteractive({useHandCursor:true});
+    const targetRing=this.add.circle(0,0,44,0xffe0a0,.06).setStrokeStyle(3,0xffdf98,.8);
+    this.robot.addAt(targetRing,0);
     this.robot.on('pointerdown',()=>this.tapRobot());
     this.input.keyboard?.on('keydown-ESC',()=>this.focus('wide'));
     this.input.keyboard?.on('keydown-ONE',()=>this.focus('desk'));
@@ -89,7 +92,7 @@ class Laboratory extends Phaser.Scene {
     if(stage==='search'||stage==='robot'){
       if(!this.save.found.includes('book'))this.hotspot(170,278,42,'📚 ספר סודי',()=>this.collect('book'));
       if(!this.save.found.includes('drawer'))this.hotspot(260,505,38,'🗄 מגירה',()=>this.collect('drawer'));
-      if(!this.save.found.includes('robot'))this.hotspot(1010,425,35,'🤖 רובוט שובב',()=>this.tapRobot());
+      // The robot itself is clickable and its hit area moves with the chase.
       return;
     }
     if(stage==='calibrate'){
@@ -127,7 +130,7 @@ class Laboratory extends Phaser.Scene {
     }
   }
   private tapRobot(){
-    if(this.save.found.includes('robot')||!['search','robot'].includes(this.save.stage))return;
+    if(this.robotRunning||this.save.found.includes('robot')||!['search','robot'].includes(this.save.stage))return;
     this.save.stage='robot';
     this.save.robotHits++;
     this.robotMotion?.stop();
@@ -157,11 +160,28 @@ class Laboratory extends Phaser.Scene {
       return;
     }
     this.save.stage='finale';this.drawHotspots();this.focus('wide');
+    this.time.delayedCall(850,()=>this.showDuck());
     this.cameras.main.shake(1300,.012);this.cameras.main.flash(800,165,110,245);
     this.scatter(600,310,70);
     this.tweens.add({targets:this.machineGlow,scale:5,alpha:.8,duration:1400,yoyo:true});
     this.time.delayedCall(1000,()=>this.report('🎉 הצלחתם! המכונה התעוררה... וייצרה ברווז גומי ענק! 🦆 המשך יבוא!'));
     this.report('המכונה מתעוררת! תחזיקו חזק...');
+  }
+  private showDuck(){
+    // Draw the comic payoff as actual game objects, not merely as a status message.
+    const shadow=this.add.ellipse(600,560,260,45,0x2b1c2b,.55).setDepth(30);
+    const body=this.add.ellipse(600,490,220,165,0xffd44d).setStrokeStyle(5,0xfff0a0).setDepth(31);
+    const head=this.add.circle(610,390,88,0xffd44d).setStrokeStyle(5,0xfff0a0).setDepth(32);
+    const eye=this.add.circle(646,365,11,0x1d2336).setDepth(33);
+    const eyeGlint=this.add.circle(650,361,3,0xffffff).setDepth(34);
+    const beak=this.add.ellipse(679,411,95,40,0xff9148).setStrokeStyle(3,0xffc078).setDepth(33);
+    const wing=this.add.ellipse(546,484,95,66,0xffe477).setAngle(-20).setDepth(33);
+    const title=this.add.text(600,575,'QUACK! 🦆',{fontFamily:'Arial',fontSize:'43px',color:'#fff5c6',stroke:'#3c2b36',strokeThickness:7}).setOrigin(.5).setDepth(35);
+    this.finaleArt=[shadow,body,head,eye,eyeGlint,beak,wing,title];
+    for(const part of this.finaleArt){(part as Phaser.GameObjects.Shape|Phaser.GameObjects.Text).setAlpha(0);}
+    this.tweens.add({targets:this.finaleArt,alpha:1,duration:450});
+    this.tweens.add({targets:[body,head,eye,eyeGlint,beak,wing],y:'-=12',duration:800,yoyo:true,repeat:2,ease:'Sine.easeInOut'});
+    this.scatter(600,385,55);
   }
   focus(zone:Zone,animate=true){
     this.zone=zone;const t=VIEWS[zone];
@@ -181,7 +201,9 @@ class Laboratory extends Phaser.Scene {
     else this.report('ניצחתם! אפשר להתחיל משחק חדש.');
   }
   restart(){
-    this.robotMotion?.stop();this.save={stage:'intro',found:[],dials:[0,0,0],robotHits:0};
+    this.robotMotion?.stop();this.robotRunning=false;
+    for(const part of this.finaleArt)part.destroy();this.finaleArt=[];
+    this.save={stage:'intro',found:[],dials:[0,0,0],robotHits:0};
     this.robot.setPosition(1000,395);this.robot.setAngle(0);
     this.drawHotspots();this.focus('wide');this.report('המעבדה מוכנה להרפתקה חדשה. לחצו על הכפתור האדום!');
   }
