@@ -257,6 +257,7 @@ class Laboratory extends Phaser.Scene {
     if(this.cinematicBusy||this.collecting||this.save.found.includes(id)||this.save.stage==='intro')return;
     this.save.found.push(id);
     this.drawHotspots();
+    this.report('הגביש נמצא! הוא בדרך לתיבת האיסוף...');
     this.animatePickup(id,()=>{
       this.refreshMachineFeedback();
       if(this.save.found.length===3){
@@ -266,7 +267,6 @@ class Laboratory extends Phaser.Scene {
         this.report('הגביש נכנס לתיבת האיסוף! '+this.save.found.length+' מתוך 3.');
       }
     });
-    this.report('הגביש נמצא! הוא בדרך לתיבת האיסוף...');
   }
   private tapRobot(){
     if(this.cinematicBusy||this.collecting||this.robotRunning||this.save.found.includes('robot')||!['search','robot'].includes(this.save.stage))return;
@@ -276,7 +276,7 @@ class Laboratory extends Phaser.Scene {
 
     this.scatter(this.robot.x,this.robot.y,7);
     if(this.save.robotHits>=3){
-      this.robotRunning=false;this.robot.setPosition(1030,295);(this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(false);
+      this.robotRunning=false;(this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(false);
       this.collect('robot');
       return;
     }
@@ -365,7 +365,7 @@ class Laboratory extends Phaser.Scene {
   hint(){
     const stage=this.save.stage;
     if(stage==='intro')this.report('הפרופסור השאיר כפתור אדום ענק. מה כבר יכול להשתבש?');
-    else if(stage==='search'||stage==='robot')this.report('חפשו את הסימונים הזוהרים: ספר, מגירה ורובוט. את הרובוט צריך לתפוס 3 פעמים.');
+    else if(stage==='search'||stage==='robot')this.report('בדקו את הספר והמגירה שבתמונה. הרובוט מתחמק — צריך לתפוס אותו שלוש פעמים.');
     else if(stage==='calibrate')this.report('הרמז מוסתר בשרטוט שעל לוח המעבדה, בצד השמאלי של המכונה.');
     else this.report('ניצחתם! אפשר להתחיל משחק חדש.');
   }
@@ -375,7 +375,7 @@ class Laboratory extends Phaser.Scene {
     
     for(const part of this.finaleArt)part.destroy();this.finaleArt=[];
     this.save={stage:'intro',found:[],dials:[0,0,0],robotHits:0};
-    this.robot.setPosition(1010,390);this.robot.setAngle(0);(this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(false);
+    this.robot.setPosition(1030,295);this.robot.setAngle(0);(this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(false);
     this.tweens.killTweensOf(this.machineGlow);this.machineGlow.setScale(1).setAlpha(.2);
     this.tweens.add({targets:this.machineGlow,alpha:.4,scale:1.35,duration:1150,yoyo:true,repeat:-1});
     this.drawHotspots();this.refreshMachineFeedback();this.refreshInventory();this.focus('wide');this.report('המעבדה מוכנה להרפתקה חדשה. לחצו על הכפתור האדום!');
@@ -384,7 +384,7 @@ class Laboratory extends Phaser.Scene {
 @Component({
   selector:'app-root',standalone:true,
   template:`<main class="shell">
-    <header class="masthead"><div><span class="eyebrow">THE CHAOS LAB · EPISODE 01</span><h1>⚡ פרופסור כאוס</h1><p>המעבדה יצאה משליטה — האם תצליחו להציל את ההמצאה?</p></div><span class="version">MVP · 0.2</span></header>
+    <header class="masthead"><div><span class="eyebrow">THE CHAOS LAB · EPISODE 01</span><h1>⚡ פרופסור כאוס</h1><p>המעבדה יצאה משליטה — האם תצליחו להציל את ההמצאה?</p></div></header>
     <nav class="zones" aria-label="ניווט בחדר">
       <button (click)="focus('wide')">🏠 כל החדר</button><button (click)="focus('desk')">📚 שולחן</button>
       <button (click)="focus('machine')">⚙ מכונה</button><button (click)="focus('robots')">🤖 רובוטים</button>
@@ -412,7 +412,7 @@ class Laboratory extends Phaser.Scene {
         <button (click)="dial(2)">⚙ חוגה 3: {{state.dials[2]+1}}</button>
       </div>
     }
-    <p class="help">לחצו על העיגולים הזוהרים בתוך החדר · Esc לחזרה למבט הכללי · מקשים 1–3 למעבר אזורים · H לרמז</p>
+    <p class="help">חקרו את החפצים שבתוך המעבדה · Esc לחזרה למבט הכללי · מקשים 1–3 למעבר אזורים · H לרמז</p>
   </main>`
 })
 class AppComponent implements AfterViewInit,OnDestroy {
