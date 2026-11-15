@@ -32,6 +32,7 @@ class Laboratory extends Phaser.Scene {
   private dialNeedles:Phaser.GameObjects.Graphics[]=[];
   private inventoryGems:Phaser.GameObjects.Arc[]=[];
   private collecting=false;
+  private inspecting=false;
   private announce:(state:ViewState)=>void=()=>{};
   constructor(){super('laboratory');}
   setReporter(fn:(state:ViewState)=>void){this.announce=fn;this.report('לחצו על התחלה כדי להעיר את המעבדה');}
@@ -217,8 +218,8 @@ class Laboratory extends Phaser.Scene {
     const stage=this.save.stage;
     if(stage==='intro'){this.hotspot(720,385,43,'🔴 כפתור אדום',()=>this.start());return;}
     if(stage==='search'||stage==='robot'){
-      if(!this.save.found.includes('book'))this.hotspot(312,438,47,'📚 ספר סודי',()=>this.collect('book'));
-      if(!this.save.found.includes('drawer'))this.hotspot(280,550,44,'🗄 מגירה',()=>this.collect('drawer'));
+      if(!this.save.found.includes('book'))this.hotspot(312,438,47,'📚 ספר סודי',()=>this.inspectObject('book'));
+      if(!this.save.found.includes('drawer'))this.hotspot(280,550,44,'🗄 מגירה',()=>this.inspectObject('drawer'));
       // The robot itself is clickable and its hit area moves with the chase.
       return;
     }
@@ -252,6 +253,20 @@ class Laboratory extends Phaser.Scene {
       const p=this.add.circle(x,y,Phaser.Math.Between(3,7),color).setDepth(20);
       this.tweens.add({targets:p,x:x+Math.cos(angle)*Phaser.Math.Between(80,230),y:y+Math.sin(angle)*Phaser.Math.Between(70,170),alpha:0,scale:0,duration:Phaser.Math.Between(500,1050),onComplete:()=>p.destroy()});
     }
+  }
+  private inspectObject(id:'book'|'drawer'){
+    if(this.inspecting||this.collecting||this.save.found.includes(id)||!['search','robot'].includes(this.save.stage))return;
+    this.inspecting=true;
+    const target=id==='book'?{x:312,y:438}:{x:280,y:550};
+    this.focus('desk');
+    const shimmer=this.add.ellipse(target.x,target.y,60,18,0xffdba2,.04)
+      .setBlendMode(Phaser.BlendModes.ADD).setDepth(6);
+    this.tweens.add({targets:shimmer,scaleX:1.45,alpha:.28,duration:420,yoyo:true,hold:120,onComplete:()=>shimmer.destroy()});
+    this.report(id==='book'?'בין דפי הספר מסתתר משהו...':'משהו מנצנץ בתוך המגירה...');
+    this.time.delayedCall(700,()=>{
+      this.inspecting=false;
+      if(!this.save.found.includes(id))this.collect(id);
+    });
   }
   private collect(id:Item){
     if(this.cinematicBusy||this.collecting||this.save.found.includes(id)||this.save.stage==='intro')return;
@@ -358,7 +373,7 @@ class Laboratory extends Phaser.Scene {
   }
   interact(item:'book'|'drawer'|'robot'){
     if(item==='robot')this.tapRobot();
-    else if(this.save.stage==='search'||this.save.stage==='robot')this.collect(item);
+    else if(this.save.stage==='search'||this.save.stage==='robot')this.inspectObject(item);
   }
   dial(i:number){this.turnDial(i);}
   clue(){this.revealClue();}
@@ -371,7 +386,7 @@ class Laboratory extends Phaser.Scene {
   }
   restart(){
     this.sequenceId++;this.cinematicBusy=false;this.cinematic?.setVisible(false);
-    this.robotMotion?.stop();this.robotRunning=false;this.collecting=false;this.clearClue();
+    this.robotMotion?.stop();this.robotRunning=false;this.collecting=false;this.inspecting=false;this.clearClue();
     
     for(const part of this.finaleArt)part.destroy();this.finaleArt=[];
     this.save={stage:'intro',found:[],dials:[0,0,0],robotHits:0};
