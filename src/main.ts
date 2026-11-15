@@ -22,6 +22,8 @@ class Laboratory extends Phaser.Scene {
   private markers:Phaser.GameObjects.GameObject[]=[];
   private machineGlow!:Phaser.GameObjects.Arc;
   private robotRunning=false;
+  private robotOrb?:Phaser.GameObjects.Arc;
+  private robotShadow?:Phaser.GameObjects.Arc;
   private finaleArt:Phaser.GameObjects.GameObject[]=[];
   private clueVisible=false;
   private clueArt:Phaser.GameObjects.GameObject[]=[];
@@ -45,16 +47,18 @@ class Laboratory extends Phaser.Scene {
     this.addAtmosphere();
     this.machineGlow=this.add.circle(600,320,45,0xc6a5ff,.18).setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({targets:this.machineGlow,alpha:.4,scale:1.35,duration:1150,yoyo:true,repeat:-1});
-    const robotSprite=this.textures.exists('robot-sprite')
-      ? this.add.image(0,0,'robot-sprite').setDisplaySize(100,106)
-      : this.add.rectangle(0,0,72,76,0x90d7c6).setStrokeStyle(3,0xe5fffa);
-    const targetRing=this.add.circle(0,0,58,0xffe0a0,.05).setStrokeStyle(2,0xffdf98,.55);
-    this.robot=this.add.container(1000,395,[targetRing,robotSprite]).setDepth(9);
-    this.robot.setSize(115,115).setInteractive({useHandCursor:true});
-    this.tweens.add({targets:targetRing,alpha:.28,scale:1.12,duration:850,yoyo:true,repeat:-1});
-    this.tweens.add({targets:robotSprite,y:-7,duration:1150,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
+    // The painted robot already exists in the background. Do not draw a second robot over it.
+    // Its escaped energy core becomes the moving target only after the first interaction.
+    const restingRing=this.add.circle(0,0,48,0x9df7ed,.025).setStrokeStyle(2,0x8ce8e1,.35);
+    const energyCore=this.add.circle(0,0,19,0x9dfaff,.85).setStrokeStyle(5,0xd5ffff,.95).setBlendMode(Phaser.BlendModes.ADD);
+    const outerGlow=this.add.circle(0,0,36,0x54baff,.15).setBlendMode(Phaser.BlendModes.ADD);
+    this.robotOrb=energyCore;
+    this.robot=this.add.container(1000,395,[restingRing,outerGlow,energyCore]).setDepth(9);
+    this.robot.setSize(105,105).setInteractive({useHandCursor:true});
+    energyCore.setVisible(false);outerGlow.setVisible(false);
+    this.tweens.add({targets:restingRing,alpha:.65,scale:1.13,duration:1150,yoyo:true,repeat:-1});
+    this.tweens.add({targets:outerGlow,scale:1.4,alpha:.5,duration:650,yoyo:true,repeat:-1});
     this.robot.on('pointerdown',()=>this.tapRobot());
-
     this.input.keyboard?.on('keydown-ESC',()=>this.focus('wide'));
     this.input.keyboard?.on('keydown-ONE',()=>this.focus('desk'));
     this.input.keyboard?.on('keydown-TWO',()=>this.focus('machine'));
@@ -63,6 +67,7 @@ class Laboratory extends Phaser.Scene {
     this.loadSave();
     this.buildCinema();
     this.drawHotspots();
+    if(this.save.robotHits>0&&!this.save.found.includes('robot')){this.robotOrb?.setVisible(true);(this.robot.list[1] as Phaser.GameObjects.Arc).setVisible(true);this.robot.setPosition(this.save.robotHits===1?860:1110,225);}
     this.focus('wide',false);
     if(this.save.stage==='finale')this.showPortal();
     this.report(this.save.stage==='intro'?'המעבדה שקטה מדי... משהו עומד לקרות!':'ברוכים השבים למעבדה! ההתקדמות נשמרה.');
@@ -187,15 +192,17 @@ class Laboratory extends Phaser.Scene {
 
     this.scatter(this.robot.x,this.robot.y,7);
     if(this.save.robotHits>=3){
-      this.robotRunning=false;this.robot.setPosition(1000,395);
+      this.robotRunning=false;this.robot.setPosition(1000,395);this.robotOrb?.setVisible(false);(this.robot.list[1] as Phaser.GameObjects.Arc).setVisible(false);
       this.collect('robot');this.report('תפסתם את הרובוט! הוא החזיר את הגביש.');
       return;
     }
     this.robotRunning=true;
+    this.robotOrb?.setVisible(true);
+    (this.robot.list[1] as Phaser.GameObjects.Arc).setVisible(true);
     this.focus('robots');
-    const positions=[{x:920,y:260},{x:1090,y:355},{x:970,y:470},{x:1060,y:250}];
-    const next=positions[this.save.robotHits%positions.length];
-    this.robotMotion=this.tweens.add({targets:this.robot,x:next.x,y:next.y,angle:this.save.robotHits%2?12:-12,duration:780,ease:'Sine.easeInOut',onUpdate:()=>{if(Math.random()<.16)this.robotTrail();},onComplete:()=>{this.robotRunning=false;}});
+    const positions=[{x:860,y:225},{x:1110,y:225},{x:905,y:475},{x:1060,y:190}];
+    const next=positions[(this.save.robotHits-1)%positions.length];
+    this.robotMotion=this.tweens.add({targets:this.robot,x:next.x,y:next.y,duration:950,ease:'Cubic.easeInOut',onUpdate:()=>{if(Math.random()<.28)this.robotTrail();},onComplete:()=>{this.robotRunning=false;}});
     this.report('הרובוט מתחמק! עוד '+(3-this.save.robotHits)+' תפיסות והוא נכנע.');
   }
   private robotTrail(){
@@ -284,7 +291,7 @@ class Laboratory extends Phaser.Scene {
     
     for(const part of this.finaleArt)part.destroy();this.finaleArt=[];
     this.save={stage:'intro',found:[],dials:[0,0,0],robotHits:0};
-    this.robot.setPosition(1000,395);this.robot.setAngle(0);
+    this.robot.setPosition(1000,395);this.robot.setAngle(0);this.robotOrb?.setVisible(false);(this.robot.list[1] as Phaser.GameObjects.Arc).setVisible(false);
     this.tweens.killTweensOf(this.machineGlow);this.machineGlow.setScale(1).setAlpha(.2);
     this.tweens.add({targets:this.machineGlow,alpha:.4,scale:1.35,duration:1150,yoyo:true,repeat:-1});
     this.drawHotspots();this.focus('wide');this.report('המעבדה מוכנה להרפתקה חדשה. לחצו על הכפתור האדום!');
