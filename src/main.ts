@@ -87,6 +87,9 @@ class Laboratory extends Phaser.Scene {
     button(775,145,'🔎 רובוטים',()=>this.focus('robots'));
     button(955,145,'↩ כל החדר',()=>this.focus('wide'));
     this.hud=this.add.container(0,0,hudItems).setDepth(100);
+    const uiCamera=this.cameras.add(0,0,1200,675);
+    this.cameras.main.ignore(this.hud);
+    uiCamera.ignore(this.world);
     this.input.keyboard?.on('keydown-ESC',()=>this.focus('wide'));
   }
   private focus(zone:Zone){
@@ -100,8 +103,6 @@ class Laboratory extends Phaser.Scene {
     const target=targets[zone];
     this.cameras.main.pan(target.x,target.y,650,'Cubic.easeInOut');
     this.cameras.main.zoomTo(target.zoom,650,'Cubic.easeInOut');
-    // HUD stays fixed on screen through Phaser's scrollFactor(0).
-    this.hud.list.forEach(obj=>{if('setScrollFactor' in obj)(obj as Phaser.GameObjects.Text).setScrollFactor(0);});
   }
 }
 @Component({selector:'app-root',standalone:true,template:`<main><h1>פרופסור כאוס ⚡</h1><p>המעבדה יצאה משליטה — מצאו את הגבישים והצילו את ההמצאה!</p><section id="game" aria-label="מעבדת פרופסור כאוס"></section><p>לחצו על האזורים כדי להתקרב · Esc לחזרה לחדר</p></main>`})
