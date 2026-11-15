@@ -30,6 +30,8 @@ class Laboratory extends Phaser.Scene {
   private sequenceId=0;
   private crystalLights:Phaser.GameObjects.Arc[]=[];
   private dialNeedles:Phaser.GameObjects.Graphics[]=[];
+  private inventoryGems:Phaser.GameObjects.Arc[]=[];
+  private collecting=false;
   private announce:(state:ViewState)=>void=()=>{};
   constructor(){super('laboratory');}
   setReporter(fn:(state:ViewState)=>void){this.announce=fn;this.report('לחצו על התחלה כדי להעיר את המעבדה');}
@@ -42,6 +44,7 @@ class Laboratory extends Phaser.Scene {
     this.addAtmosphere();
     this.machineGlow=this.add.circle(665,270,45,0xc6a5ff,.18).setBlendMode(Phaser.BlendModes.ADD);
     this.buildMachineFeedback();
+    this.buildInventory();
     this.tweens.add({targets:this.machineGlow,alpha:.4,scale:1.35,duration:1150,yoyo:true,repeat:-1});
     const robotShadow=this.add.ellipse(0,62,80,14,0x050a14,.25);
     const robotSprite=this.add.circle(0,0,24,0xa8f9f4,.92).setStrokeStyle(6,0xe6ffff,.95).setBlendMode(Phaser.BlendModes.ADD);
@@ -64,6 +67,7 @@ class Laboratory extends Phaser.Scene {
     this.buildCinema();
     this.drawHotspots();
     this.refreshMachineFeedback();
+    this.refreshInventory();
     if(this.save.robotHits>0&&!this.save.found.includes('robot')){this.robot.setPosition(this.save.robotHits===1?1060:920,315);(this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(true);}
     this.focus('wide',false);
     if(this.save.stage==='finale')this.showPortal();
@@ -161,6 +165,44 @@ class Laboratory extends Phaser.Scene {
   private refreshMachineFeedback(){
     // The illustration is the source of truth; progress stays in the accessible status panel.
   }
+  private buildInventory(){
+    // The collection box is part of the world, not a fixed overlay.
+    const x=425,y=564;
+    const box=this.add.graphics().setDepth(22);
+    box.fillStyle(0x251d30,.92);box.fillRoundedRect(x-75,y-25,150,62,12);
+    box.lineStyle(6,0xc89b65,.92);box.strokeRoundedRect(x-75,y-25,150,62,12);
+    box.lineStyle(2,0xffdfaa,.55);box.lineBetween(x-66,y-12,x+66,y-12);
+    for(let i=0;i<3;i++){
+      const slot=this.add.circle(x-44+i*44,y+5,13,0x111a28,.9).setStrokeStyle(2,0xc79d6b,.8).setDepth(23);
+      const gem=this.add.circle(slot.x,slot.y,9,[0x8cefe8,0xc5a1ff,0xffc783][i],.95).setStrokeStyle(2,0xf4f9ec,.9).setDepth(24);
+      gem.setVisible(false);
+      this.inventoryGems.push(gem);
+    }
+  }
+  private refreshInventory(){
+    this.inventoryGems.forEach((gem,i)=>gem.setVisible(i<this.save.found.length));
+  }
+  private animatePickup(id:Item,onComplete:()=>void){
+    const origin=id==='book'?{x:312,y:438}:id==='drawer'?{x:280,y:550}:{x:this.robot.x,y:this.robot.y};
+    const slot=this.inventoryGems[this.save.found.length-1];
+    if(!slot){onComplete();return;}
+    this.collecting=true;
+    const gem=this.add.circle(origin.x,origin.y,14,id==='book'?0x8cefe8:id==='drawer'?0xc5a1ff:0xffc783,.98)
+      .setStrokeStyle(3,0xf9ffff,1).setDepth(80).setBlendMode(Phaser.BlendModes.ADD);
+    const halo=this.add.circle(origin.x,origin.y,32,0x8cefff,.16).setDepth(79).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({targets:halo,scale:1.8,alpha:0,duration:380,onComplete:()=>halo.destroy()});
+    this.tweens.add({targets:gem,y:origin.y-52,scale:1.28,duration:310,ease:'Sine.easeOut',onComplete:()=>{
+      this.tweens.add({targets:gem,x:slot.x,y:slot.y,scale:.6,duration:680,ease:'Cubic.easeInOut',onUpdate:()=>{if(Math.random()<.15)this.robotTrailAt(gem.x,gem.y);},onComplete:()=>{
+        gem.destroy();slot.setVisible(true);slot.setScale(.3);
+        this.tweens.add({targets:slot,scale:1,duration:300,ease:'Back.easeOut'});
+        this.collecting=false;onComplete();
+      }});
+    }});
+  }
+  private robotTrailAt(x:number,y:number){
+    const p=this.add.circle(x,y,Phaser.Math.Between(2,5),0xc7faff,.7).setDepth(78);
+    this.tweens.add({targets:p,y:y+15,alpha:0,scale:0,duration:330,onComplete:()=>p.destroy()});
+  }
   private hotspot(x:number,y:number,r:number,label:string,action:()=>void){
     // Invisible hit target: the artwork itself remains a single seamless image.
     const hit=this.add.zone(x,y,r*2,r*2).setDepth(17).setInteractive({useHandCursor:true});
@@ -212,18 +254,22 @@ class Laboratory extends Phaser.Scene {
     }
   }
   private collect(id:Item){
-    if(this.cinematicBusy||this.save.found.includes(id)||this.save.stage==='intro')return;
-    this.save.found.push(id);this.refreshMachineFeedback();this.scatter(id==='book'?312:id==='drawer'?280:1010,id==='book'?438:id==='drawer'?550:390,15);
-    this.cameras.main.flash(160,130,220,210);
-    if(this.save.found.length===3){
-      this.save.stage='calibrate';this.drawHotspots();this.refreshMachineFeedback();this.focus('machine');
-      this.report('שלושת הגבישים בידיכם! חפשו את השרטוט שעל הלוח כדי לגלות את הקוד למכונה.');
-    }else{
-      this.drawHotspots();this.report('גביש נמצא! '+this.save.found.length+' מתוך 3. ממשיכים לחפש.');
-    }
+    if(this.cinematicBusy||this.collecting||this.save.found.includes(id)||this.save.stage==='intro')return;
+    this.save.found.push(id);
+    this.drawHotspots();
+    this.animatePickup(id,()=>{
+      this.refreshMachineFeedback();
+      if(this.save.found.length===3){
+        this.save.stage='calibrate';this.drawHotspots();this.focus('machine');
+        this.report('שלושת הגבישים נאספו! חפשו את השרטוט שעל הלוח כדי לגלות את הקוד למכונה.');
+      }else{
+        this.report('הגביש נכנס לתיבת האיסוף! '+this.save.found.length+' מתוך 3.');
+      }
+    });
+    this.report('הגביש נמצא! הוא בדרך לתיבת האיסוף...');
   }
   private tapRobot(){
-    if(this.cinematicBusy||this.robotRunning||this.save.found.includes('robot')||!['search','robot'].includes(this.save.stage))return;
+    if(this.cinematicBusy||this.collecting||this.robotRunning||this.save.found.includes('robot')||!['search','robot'].includes(this.save.stage))return;
     this.save.stage='robot';
     this.save.robotHits++;
     this.robotMotion?.stop();
@@ -231,7 +277,7 @@ class Laboratory extends Phaser.Scene {
     this.scatter(this.robot.x,this.robot.y,7);
     if(this.save.robotHits>=3){
       this.robotRunning=false;this.robot.setPosition(1030,295);(this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(false);
-      this.collect('robot');this.report('תפסתם את הרובוט! הוא החזיר את הגביש.');
+      this.collect('robot');
       return;
     }
     this.robotRunning=true;
@@ -325,14 +371,14 @@ class Laboratory extends Phaser.Scene {
   }
   restart(){
     this.sequenceId++;this.cinematicBusy=false;this.cinematic?.setVisible(false);
-    this.robotMotion?.stop();this.robotRunning=false;this.clearClue();
+    this.robotMotion?.stop();this.robotRunning=false;this.collecting=false;this.clearClue();
     
     for(const part of this.finaleArt)part.destroy();this.finaleArt=[];
     this.save={stage:'intro',found:[],dials:[0,0,0],robotHits:0};
     this.robot.setPosition(1010,390);this.robot.setAngle(0);(this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(false);
     this.tweens.killTweensOf(this.machineGlow);this.machineGlow.setScale(1).setAlpha(.2);
     this.tweens.add({targets:this.machineGlow,alpha:.4,scale:1.35,duration:1150,yoyo:true,repeat:-1});
-    this.drawHotspots();this.refreshMachineFeedback();this.focus('wide');this.report('המעבדה מוכנה להרפתקה חדשה. לחצו על הכפתור האדום!');
+    this.drawHotspots();this.refreshMachineFeedback();this.refreshInventory();this.focus('wide');this.report('המעבדה מוכנה להרפתקה חדשה. לחצו על הכפתור האדום!');
   }
 }
 @Component({
