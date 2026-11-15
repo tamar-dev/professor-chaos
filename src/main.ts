@@ -10,8 +10,8 @@ interface ViewState { stage:Stage; found:number; robotHits:number; dials:number[
 const STORAGE_KEY='professor-chaos-save-v2';
 const EMPTY:SaveData={stage:'intro',found:[],dials:[0,0,0],robotHits:0};
 const VIEWS:Record<Zone,{x:number;y:number;zoom:number}>={
-  wide:{x:600,y:338,zoom:1},desk:{x:275,y:375,zoom:1.65},
-  machine:{x:600,y:340,zoom:1.55},robots:{x:980,y:360,zoom:1.65}
+  wide:{x:600,y:338,zoom:1},desk:{x:290,y:400,zoom:1.65},
+  machine:{x:685,y:325,zoom:1.55},robots:{x:1010,y:360,zoom:1.65}
 };
 const DIAL_TARGET=[2,1,3];
 class Laboratory extends Phaser.Scene {
@@ -37,17 +37,17 @@ class Laboratory extends Phaser.Scene {
   create(){
     this.cameras.main.setBackgroundColor('#281c28');
     this.buildStoryWorld();
-    const light=this.add.circle(600,300,115,0x8adce8,.08).setBlendMode(Phaser.BlendModes.ADD);
+    const light=this.add.circle(665,270,115,0x8adce8,.08).setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({targets:light,alpha:.26,scale:1.25,duration:1900,yoyo:true,repeat:-1});
     this.addAtmosphere();
-    this.machineGlow=this.add.circle(600,320,45,0xc6a5ff,.18).setBlendMode(Phaser.BlendModes.ADD);
+    this.machineGlow=this.add.circle(665,270,45,0xc6a5ff,.18).setBlendMode(Phaser.BlendModes.ADD);
     this.buildMachineFeedback();
     this.tweens.add({targets:this.machineGlow,alpha:.4,scale:1.35,duration:1150,yoyo:true,repeat:-1});
-    const robotShadow=this.add.ellipse(0,62,116,23,0x050a14,.55);
+    const robotShadow=this.add.ellipse(0,62,80,14,0x050a14,.25);
     const robotSprite=this.add.circle(0,0,24,0xa8f9f4,.92).setStrokeStyle(6,0xe6ffff,.95).setBlendMode(Phaser.BlendModes.ADD);
-    const aura=this.add.circle(0,0,65,0x5cefe7,.06).setStrokeStyle(2,0x9ffff5,.35);
-    this.robot=this.add.container(1010,390,[robotShadow,aura,robotSprite]).setDepth(12);
-    this.robot.setSize(130,145).setInteractive({useHandCursor:true});
+    const aura=this.add.circle(0,0,42,0x5cefe7,.025);
+    this.robot=this.add.container(1030,295,[robotShadow,aura,robotSprite]).setDepth(12);
+    this.robot.setSize(115,115).setInteractive({useHandCursor:true});
     robotSprite.setVisible(false);robotShadow.setVisible(false);
     this.tweens.add({targets:robotSprite,y:-11,duration:1100,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
     this.tweens.add({targets:robotShadow,scaleX:.75,alpha:.2,duration:1100,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
@@ -64,7 +64,7 @@ class Laboratory extends Phaser.Scene {
     this.buildCinema();
     this.drawHotspots();
     this.refreshMachineFeedback();
-    if(this.save.robotHits>0&&!this.save.found.includes('robot')){this.robot.setPosition(this.save.robotHits===1?860:1110,225);(this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(true);}
+    if(this.save.robotHits>0&&!this.save.found.includes('robot')){this.robot.setPosition(this.save.robotHits===1?1060:920,315);(this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(true);}
     this.focus('wide',false);
     if(this.save.stage==='finale')this.showPortal();
     this.report(this.save.stage==='intro'?'המעבדה שקטה מדי... משהו עומד לקרות!':'ברוכים השבים למעבדה! ההתקדמות נשמרה.');
@@ -80,9 +80,9 @@ class Laboratory extends Phaser.Scene {
     // Electricity traces the actual machine instead of unrelated screen-space ornaments.
     const conduit=this.add.graphics().setDepth(7);
     const dot=this.make.graphics({x:0,y:0});dot.fillStyle(0xa5ffff);dot.fillCircle(4,4,4);dot.generateTexture('chaos-spark',8,8);dot.destroy();
-    const sparks=this.add.particles(600,315,'chaos-spark',{speed:{min:12,max:55},scale:{start:.09,end:0},lifespan:850,frequency:110,quantity:1,blendMode:'ADD'});
+    const sparks=this.add.particles(665,267,'chaos-spark',{speed:{min:12,max:55},scale:{start:.09,end:0},lifespan:850,frequency:110,quantity:1,blendMode:'ADD'});
     sparks.setDepth(8);
-    const machineLight=this.add.circle(600,292,85,0x8df5ff,.09).setDepth(5).setBlendMode(Phaser.BlendModes.ADD);
+    const machineLight=this.add.circle(665,267,85,0x8df5ff,.09).setDepth(5).setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({targets:machineLight,scale:1.28,alpha:.27,duration:1450,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
     this.events.on(Phaser.Scenes.Events.UPDATE,()=>{
       const t=this.time.now*.001;
@@ -90,9 +90,9 @@ class Laboratory extends Phaser.Scene {
       for(let k=0;k<3;k++){
         conduit.lineStyle(k===0?4:2,k===0?0x8ef8fa:k===1?0xe3a6ff:0xffdba0,.28+Math.sin(t*3+k)*.16);
         conduit.beginPath();
-        const y=315+k*14;
-        conduit.moveTo(505,y);
-        for(let x=515;x<=690;x+=12)conduit.lineTo(x,y+Math.sin(x*.06+t*4+k)*8);
+        const y=267+k*14;
+        conduit.moveTo(585,y);
+        for(let x=595;x<=740;x+=12)conduit.lineTo(x,y+Math.sin(x*.06+t*4+k)*8);
         conduit.strokePath();
       }
     });
@@ -154,35 +154,12 @@ class Laboratory extends Phaser.Scene {
     this.announce({stage:this.save.stage,found:this.save.found.length,robotHits:this.save.robotHits,dials:[...this.save.dials],message,finished:this.save.stage==='finale'});
   }
   private buildMachineFeedback(){
-    // Three small crystal sockets are integrated with the painted control panel.
-    for(let i=0;i<3;i++){
-      const x=523+i*77;
-      const socket=this.add.circle(x,418,10,0x0d1c29,.8).setStrokeStyle(2,0xd7b58c,.75).setDepth(14);
-      const crystal=this.add.circle(x,418,6,0x89f6ed,.95).setDepth(15).setBlendMode(Phaser.BlendModes.ADD);
-      crystal.setVisible(false);
-      this.crystalLights.push(crystal);
-      this.tweens.add({targets:socket,alpha:.6,duration:1700,yoyo:true,repeat:-1});
-      this.tweens.add({targets:crystal,scale:1.45,alpha:.5,duration:700+i*170,yoyo:true,repeat:-1});
-    }
-    // The needles are actual animated dial state, not numbers painted over the game.
-    for(let i=0;i<3;i++){
-      const needle=this.add.graphics().setDepth(16);
-      this.dialNeedles.push(needle);
-    }
+    // Use existing painted glass and control panel; no floating HUD over the image.
+    const glow=this.add.ellipse(662,245,65,72,0x8deaff,.05).setBlendMode(Phaser.BlendModes.ADD).setDepth(4);
+    this.tweens.add({targets:glow,alpha:.18,scale:1.2,duration:1800,yoyo:true,repeat:-1});
   }
   private refreshMachineFeedback(){
-    for(let i=0;i<this.crystalLights.length;i++){
-      this.crystalLights[i].setVisible(i<this.save.found.length);
-    }
-    for(let i=0;i<this.dialNeedles.length;i++){
-      const g=this.dialNeedles[i],x=510+i*90,y=455;
-      const angle=-Math.PI*.75+this.save.dials[i]*Math.PI/2;
-      g.clear();
-      if(this.save.stage!=='calibrate'&&this.save.stage!=='finale')continue;
-      g.lineStyle(4,0x9ff9ed,.95);
-      g.lineBetween(x,y,x+Math.cos(angle)*17,y+Math.sin(angle)*17);
-      g.fillStyle(0xffe6b3);g.fillCircle(x,y,4);
-    }
+    // The illustration is the source of truth; progress stays in the accessible status panel.
   }
   private hotspot(x:number,y:number,r:number,label:string,action:()=>void){
     // Invisible hit target: the artwork itself remains a single seamless image.
@@ -196,20 +173,20 @@ class Laboratory extends Phaser.Scene {
   private drawHotspots(){
     this.clearMarkers();
     const stage=this.save.stage;
-    if(stage==='intro'){this.hotspot(600,400,42,'🔴 כפתור אדום',()=>this.start());return;}
+    if(stage==='intro'){this.hotspot(720,385,43,'🔴 כפתור אדום',()=>this.start());return;}
     if(stage==='search'||stage==='robot'){
-      if(!this.save.found.includes('book'))this.hotspot(170,278,42,'📚 ספר סודי',()=>this.collect('book'));
-      if(!this.save.found.includes('drawer'))this.hotspot(260,505,38,'🗄 מגירה',()=>this.collect('drawer'));
+      if(!this.save.found.includes('book'))this.hotspot(312,438,47,'📚 ספר סודי',()=>this.collect('book'));
+      if(!this.save.found.includes('drawer'))this.hotspot(280,550,44,'🗄 מגירה',()=>this.collect('drawer'));
       // The robot itself is clickable and its hit area moves with the chase.
       return;
     }
     if(stage==='calibrate'){
-      this.hotspot(385,205,35,'📜 רמז נסתר',()=>this.revealClue());
+      this.hotspot(390,247,65,'📜 רמז נסתר',()=>this.revealClue());
       [0,1,2].forEach((i)=>{
-        const x=510+i*90;
-        this.hotspot(x,455,27,'⚙ '+(this.save.dials[i]+1),()=>this.turnDial(i));
+        const x=589+i*77;
+        this.hotspot(x,416,27,'⚙ '+(this.save.dials[i]+1),()=>this.turnDial(i));
       });
-      this.hotspot(600,375,38,'⚡ הפעלה',()=>this.activate());
+      this.hotspot(720,385,40,'⚡ הפעלה',()=>this.activate());
     }
   }
   start(){
@@ -219,7 +196,7 @@ class Laboratory extends Phaser.Scene {
     this.cinematicShot(1150,()=>{
       if(this.save.stage!=='search')return;
       this.cameras.main.shake(900,.012);this.cameras.main.flash(550,170,105,230);
-      this.scatter(600,350,45);
+      this.scatter(665,270,45);
       this.robot.setAngle(-18);
       this.time.delayedCall(350,()=>this.robot.setAngle(0));
       this.focus('wide');
@@ -236,7 +213,7 @@ class Laboratory extends Phaser.Scene {
   }
   private collect(id:Item){
     if(this.cinematicBusy||this.save.found.includes(id)||this.save.stage==='intro')return;
-    this.save.found.push(id);this.refreshMachineFeedback();this.scatter(id==='book'?170:id==='drawer'?260:1000,id==='book'?278:id==='drawer'?505:400,15);
+    this.save.found.push(id);this.refreshMachineFeedback();this.scatter(id==='book'?312:id==='drawer'?280:1010,id==='book'?438:id==='drawer'?550:390,15);
     this.cameras.main.flash(160,130,220,210);
     if(this.save.found.length===3){
       this.save.stage='calibrate';this.drawHotspots();this.refreshMachineFeedback();this.focus('machine');
@@ -253,14 +230,14 @@ class Laboratory extends Phaser.Scene {
 
     this.scatter(this.robot.x,this.robot.y,7);
     if(this.save.robotHits>=3){
-      this.robotRunning=false;this.robot.setPosition(1010,390);(this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(false);
+      this.robotRunning=false;this.robot.setPosition(1030,295);(this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(false);
       this.collect('robot');this.report('תפסתם את הרובוט! הוא החזיר את הגביש.');
       return;
     }
     this.robotRunning=true;
     (this.robot.list[2] as Phaser.GameObjects.Arc).setVisible(true);
     this.focus('robots');
-    const positions=[{x:860,y:225},{x:1110,y:225},{x:905,y:475},{x:1060,y:190}];
+    const positions=[{x:1060,y:330},{x:900,y:455},{x:1080,y:205},{x:930,y:260}];
     const next=positions[(this.save.robotHits-1)%positions.length];
     this.robotMotion=this.tweens.add({targets:this.robot,x:next.x,y:next.y,duration:1150,ease:'Sine.easeInOut',onStart:()=>this.tweens.add({targets:this.robot,angle:next.x<this.robot.x?-13:13,duration:220,yoyo:true}),onUpdate:()=>{if(Math.random()<.28)this.robotTrail();},onComplete:()=>{this.robotRunning=false;this.tweens.add({targets:this.robot,angle:0,duration:200});}});
     this.report('הרובוט מתחמק! עוד '+(3-this.save.robotHits)+' תפיסות והוא נכנע.');
@@ -287,7 +264,7 @@ class Laboratory extends Phaser.Scene {
     if(this.save.stage!=='calibrate')return;
     this.save.dials[i]=(this.save.dials[i]+1)%4;
     this.refreshMachineFeedback();
-    this.scatter(510+i*90,455,5);this.drawHotspots();
+    this.scatter(589+i*77,416,5);this.drawHotspots();
     this.report('חוגות: '+this.save.dials.map(n=>n+1).join(' · ')+'. '+(this.clueVisible?'הקוד מהשרטוט: 3 · 2 · 4':'אפשר לחזור לשרטוט כדי לבדוק את הקוד.'));
   }
   activate(){
@@ -303,7 +280,7 @@ class Laboratory extends Phaser.Scene {
     this.cinematicShot(1650,()=>{
       if(this.save.stage!=='finale')return;
       this.cameras.main.shake(1200,.014);this.cameras.main.flash(950,210,165,255);
-      this.scatter(600,310,90);
+      this.scatter(665,270,90);
       this.focus('wide');
       this.time.delayedCall(400,()=>{if(this.save.stage==='finale')this.showPortal();});
       this.report('האנרגיה התייצבה... אבל במרכז המעבדה נפתח שער מסתורי. מה נמצא מעבר לו?');
@@ -316,17 +293,17 @@ class Laboratory extends Phaser.Scene {
   private showPortal(){
     if(this.finaleArt.length)return;
     // An unstable energy aperture grows from the machine's existing core.
-    const outer=this.add.ellipse(600,327,270,365,0x271a56,.6).setStrokeStyle(11,0x7de9f0,.85).setDepth(28);
-    const inner=this.add.ellipse(600,327,215,315,0x132f58,.85).setStrokeStyle(7,0xc7a2ff,.75).setDepth(29);
-    const core=this.add.ellipse(600,327,135,240,0x9cecf3,.45).setBlendMode(Phaser.BlendModes.ADD).setDepth(30);
-    const halo=this.add.ellipse(600,327,330,420,0x8a7aff,.16).setBlendMode(Phaser.BlendModes.ADD).setDepth(27);
+    const outer=this.add.ellipse(665,270,270,365,0x271a56,.6).setStrokeStyle(11,0x7de9f0,.85).setDepth(28);
+    const inner=this.add.ellipse(665,270,215,315,0x132f58,.85).setStrokeStyle(7,0xc7a2ff,.75).setDepth(29);
+    const core=this.add.ellipse(665,270,135,240,0x9cecf3,.45).setBlendMode(Phaser.BlendModes.ADD).setDepth(30);
+    const halo=this.add.ellipse(665,270,330,420,0x8a7aff,.16).setBlendMode(Phaser.BlendModes.ADD).setDepth(27);
     this.finaleArt=[halo,outer,inner,core];
     for(const part of this.finaleArt){(part as Phaser.GameObjects.Arc).setAlpha(0).setScale(.08);}
     this.tweens.add({targets:this.finaleArt,alpha:1,scale:1,duration:1200,ease:'Back.easeOut'});
     this.tweens.add({targets:outer,angle:3,duration:1200,yoyo:true,repeat:-1});
     this.tweens.add({targets:inner,angle:-5,duration:1400,yoyo:true,repeat:-1});
     this.tweens.add({targets:core,alpha:.8,scaleX:1.12,duration:750,yoyo:true,repeat:-1});
-    this.scatter(600,327,85);
+    this.scatter(665,270,85);
   }
   focus(zone:Zone,animate=true){
     this.zone=zone;const t=VIEWS[zone];
