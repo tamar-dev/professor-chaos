@@ -264,7 +264,7 @@ class Laboratory extends Phaser.Scene {
   }
   private openBook(){
     if(this.bookOpen||this.collecting||this.save.found.includes('book'))return;
-    this.bookOpen=true;this.inspecting=true;this.bookPage=0;this.focus('desk');
+    this.bookOpen=true;this.inspecting=true;this.bookPage=0;this.focus('wide',false);
     this.renderBook();
     this.report('יומן ההמצאות של פרופסור כאוס! דפדפו כדי לחשוף את הסוד.');
   }
