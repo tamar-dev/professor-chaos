@@ -33,6 +33,9 @@ class Laboratory extends Phaser.Scene {
   private inventoryGems:Phaser.GameObjects.Arc[]=[];
   private collecting=false;
   private inspecting=false;
+  private bookPage=0;
+  private bookOverlay:Phaser.GameObjects.GameObject[]=[];
+  private bookOpen=false;
   private announce:(state:ViewState)=>void=()=>{};
   constructor(){super('laboratory');}
   setReporter(fn:(state:ViewState)=>void){this.announce=fn;this.report('לחצו על התחלה כדי להעיר את המעבדה');}
@@ -255,37 +258,69 @@ class Laboratory extends Phaser.Scene {
       this.tweens.add({targets:p,x:x+Math.cos(angle)*Phaser.Math.Between(80,230),y:y+Math.sin(angle)*Phaser.Math.Between(70,170),alpha:0,scale:0,duration:Phaser.Math.Between(500,1050),onComplete:()=>p.destroy()});
     }
   }
+  private closeBook(){
+    for(const part of this.bookOverlay)part.destroy();
+    this.bookOverlay=[];this.bookOpen=false;this.inspecting=false;
+  }
+  private openBook(){
+    if(this.bookOpen||this.collecting||this.save.found.includes('book'))return;
+    this.bookOpen=true;this.inspecting=true;this.bookPage=0;this.focus('desk');
+    this.renderBook();
+    this.report('יומן ההמצאות של פרופסור כאוס! דפדפו כדי לחשוף את הסוד.');
+  }
+  private renderBook(){
+    for(const part of this.bookOverlay)part.destroy();
+    this.bookOverlay=[];
+    if(!this.bookOpen)return;
+    const depth=180;
+    // A readable, interactive storybook in the game world, with genuine page turns.
+    const shade=this.add.rectangle(600,338,1200,675,0x090b15,.67).setDepth(depth).setInteractive();
+    const shadow=this.add.rectangle(600,337,655,435,0x110e17,.7).setDepth(depth+1).setAngle(-1);
+    const binding=this.add.rectangle(600,335,24,390,0x5b321e).setDepth(depth+4);
+    const left=this.add.rectangle(435,335,324,390,0xf0dfb7).setStrokeStyle(7,0x765034).setDepth(depth+2);
+    const right=this.add.rectangle(765,335,324,390,0xf5e6c4).setStrokeStyle(7,0x765034).setDepth(depth+2);
+    const title=this.add.text(600,105,'יומן ההמצאות · כרך ג׳',{fontFamily:'Georgia, serif',fontSize:'32px',color:'#f5d18a',align:'center'}).setOrigin(.5).setDepth(depth+6);
+    const pages=[
+      ['היום שבו הכול השתבש','הפעלתי את מכונת הכאוס. שוב.\\nשלושה גבישים עפו לכל עבר.\\n\\nאולי הייתי צריך לקרוא\\nאת הוראות הבטיחות...','הערה חשובה','לא לגעת בידית האדומה\\nלפני שהגבישים במקומם!\\n\\n(אני כמובן נגעתי.)'],
+      ['שלושת הגבישים','אחד מסתתר בין הדפים.\\nהשני נח במגירה הישנה.\\nהשלישי אצל הרובוט השובב.','על הרובוט','הוא אוהב לשחק מחבואים.\\nאם תתפסו אותו שלוש פעמים,\\nאולי יסכים לעזור.'],
+      ['השרטוט הסודי','כדי לייצב את המכונה:👇\\n\\n  ⚙  3  ·  2  ·  4\\n\\nזכרו את סדר החוגות!','הפתעה בין הדפים','רגע... מה זה מנצנץ\\nבתוך הכריכה?\\n\\nלחצו על הגביש כדי לאסוף אותו!']
+    ];
+    const p=pages[this.bookPage];
+    const textStyle={fontFamily:'Arial, sans-serif',fontSize:'23px',color:'#4b3020',align:'center' as const,lineSpacing:11,wordWrap:{width:275}};
+    const t1=this.add.text(435,190,p[0]+'\\n\\n'+p[1],textStyle).setOrigin(.5,0).setDepth(depth+5).setScale(.88);
+    const t2=this.add.text(765,190,p[2]+'\\n\\n'+p[3],textStyle).setOrigin(.5,0).setDepth(depth+5).setScale(.88);
+    const next=this.add.text(880,545,this.bookPage===2?'✦ אספו את הגביש':'◀ הדף הבא',{fontFamily:'Arial',fontSize:'23px',color:'#ffe1a5',backgroundColor:'#49301e',padding:{x:16,y:10}}).setOrigin(.5).setDepth(depth+7).setInteractive({useHandCursor:true});
+    const prev=this.add.text(320,545,'הקודם ▶',{fontFamily:'Arial',fontSize:'21px',color:'#ffe1a5',backgroundColor:'#49301e',padding:{x:14,y:10}}).setOrigin(.5).setDepth(depth+7).setInteractive({useHandCursor:true});
+    const close=this.add.text(600,575,'✕ סגירת היומן',{fontFamily:'Arial',fontSize:'20px',color:'#fce4c7'}).setOrigin(.5).setDepth(depth+7).setInteractive({useHandCursor:true});
+    this.bookOverlay=[shade,shadow,binding,left,right,title,t1,t2,next,prev,close];
+    next.on('pointerdown',()=>{
+      if(this.bookPage<2){
+        const turning=this.add.rectangle(764,335,320,388,0xffefcb).setOrigin(0.5).setDepth(depth+8);
+        this.bookOverlay.push(turning);
+        this.tweens.add({targets:turning,scaleX:.015,x:602,duration:380,ease:'Sine.easeIn',onComplete:()=>{if(!this.bookOpen)return;this.bookPage++;this.renderBook();}});
+      }else{
+        this.closeBook();this.collect('book');
+      }
+    });
+    prev.on('pointerdown',()=>{if(this.bookPage>0){this.bookPage--;this.renderBook();}});
+    close.on('pointerdown',()=>{this.closeBook();this.focus('wide');this.report('סגרתם את היומן. אפשר לחזור ולדפדף בו.');});
+  }
   private inspectObject(id:'book'|'drawer'){
+    if(id==='book'){this.openBook();return;}
     if(this.inspecting||this.collecting||this.save.found.includes(id)||!['search','robot'].includes(this.save.stage))return;
     this.inspecting=true;
     const inspectionId=this.sequenceId;
     this.focus('desk');
-    const target=id==='book'?{x:312,y:438}:{x:280,y:550};
+    const target={x:280,y:550};
     const object=this.add.container(target.x,target.y).setDepth(12);
-    const shadow=this.add.ellipse(0,13,id==='book'?76:92,18,0x100d19,.35);
-    object.add(shadow);
-    if(id==='book'){
-      // Page-turn motion: a narrow parchment leaf folds around its spine.
-      const cover=this.add.rectangle(0,0,78,46,0x725039,.93).setStrokeStyle(3,0xb88b5b);
-      const pages=this.add.rectangle(1,-3,70,38,0xe9d7ae,.94).setStrokeStyle(2,0xc7a57a);
-      const leaf=this.add.rectangle(18,-3,34,36,0xffebbf,.98).setOrigin(0,0.5);
-      const spine=this.add.rectangle(-3,0,5,43,0x67422d,.95);
-      object.add([cover,pages,leaf,spine]);
-      this.tweens.add({targets:leaf,scaleX:.03,duration:270,ease:'Sine.easeIn',onComplete:()=>{
-        leaf.x=-4;leaf.setOrigin(1,.5);
-        this.tweens.add({targets:leaf,scaleX:1,duration:270,ease:'Sine.easeOut'});
-      }});
-    }else{
-      // The drawer front moves outward with its shadow and revealed interior.
-      const cavity=this.add.rectangle(0,0,84,35,0x241727,.95).setStrokeStyle(3,0x8c6041);
-      const front=this.add.rectangle(0,4,90,30,0x765038,.95).setStrokeStyle(3,0xb58a5a);
-      const handle=this.add.circle(0,5,5,0xe3b96f,.95);
-      object.add([cavity,front,handle]);
-      this.tweens.add({targets:[front,handle],y:'+=25',duration:520,ease:'Cubic.easeOut'});
-    }
+    const cavity=this.add.rectangle(0,0,84,35,0x241727,.95).setStrokeStyle(3,0x8c6041);
+    const front=this.add.rectangle(0,4,90,30,0x765038,.95).setStrokeStyle(3,0xb58a5a);
+    const handle=this.add.circle(0,5,5,0xe3b96f,.95);
+    object.add([cavity,front,handle]);
+    this.tweens.add({targets:[front,handle],y:'+=25',duration:520,ease:'Cubic.easeOut'});
     object.setAlpha(0);
     this.tweens.add({targets:object,alpha:.92,duration:150});
-    this.report(id==='book'?'דפי הספר נפתחים... משהו מסתתר ביניהם!':'המגירה נשלפת... יש בתוכה משהו נוצץ!');
+    this.report('המגירה נשלפת... יש בתוכה משהו נוצץ!');
     this.time.delayedCall(740,()=>{
       if(inspectionId!==this.sequenceId){object.destroy();return;}
       this.tweens.add({targets:object,alpha:0,duration:180,onComplete:()=>object.destroy()});
@@ -309,7 +344,7 @@ class Laboratory extends Phaser.Scene {
     });
   }
   private tapRobot(){
-    if(this.cinematicBusy||this.collecting||this.robotRunning||this.save.found.includes('robot')||!['search','robot'].includes(this.save.stage))return;
+    if(this.bookOpen||this.cinematicBusy||this.collecting||this.robotRunning||this.save.found.includes('robot')||!['search','robot'].includes(this.save.stage))return;
     this.save.stage='robot';
     this.save.robotHits++;
     this.robotMotion?.stop();
@@ -410,7 +445,7 @@ class Laboratory extends Phaser.Scene {
     else this.report('ניצחתם! אפשר להתחיל משחק חדש.');
   }
   restart(){
-    this.sequenceId++;this.cinematicBusy=false;this.cinematic?.setVisible(false);
+    this.closeBook();this.sequenceId++;this.cinematicBusy=false;this.cinematic?.setVisible(false);
     this.robotMotion?.stop();this.robotRunning=false;this.collecting=false;this.inspecting=false;this.clearClue();
     
     for(const part of this.finaleArt)part.destroy();this.finaleArt=[];
