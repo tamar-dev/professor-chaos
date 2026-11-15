@@ -23,6 +23,8 @@ class Laboratory extends Phaser.Scene {
   private machineGlow!:Phaser.GameObjects.Arc;
   private robotRunning=false;
   private finaleArt:Phaser.GameObjects.GameObject[]=[];
+  private clueVisible=false;
+  private clueArt:Phaser.GameObjects.GameObject[]=[];
   private announce:(state:ViewState)=>void=()=>{};
   constructor(){super('laboratory');}
   setReporter(fn:(state:ViewState)=>void){this.announce=fn;this.report('לחצו על התחלה כדי להעיר את המעבדה');}
@@ -98,6 +100,7 @@ class Laboratory extends Phaser.Scene {
       return;
     }
     if(stage==='calibrate'){
+      this.hotspot(385,205,35,'📜 רמז נסתר',()=>this.revealClue());
       [0,1,2].forEach((i)=>{
         const x=510+i*90;
         this.hotspot(x,455,27,'⚙ '+(this.save.dials[i]+1),()=>this.turnDial(i));
@@ -126,7 +129,7 @@ class Laboratory extends Phaser.Scene {
     this.cameras.main.flash(160,130,220,210);
     if(this.save.found.length===3){
       this.save.stage='calibrate';this.drawHotspots();this.focus('machine');
-      this.report('שלושת הגבישים בידיכם! כוונו את החוגות לפי הרמז: 3, 2, 4.');
+      this.report('שלושת הגבישים בידיכם! חפשו את השרטוט שעל הלוח כדי לגלות את הקוד למכונה.');
     }else{
       this.drawHotspots();this.report('גביש נמצא! '+this.save.found.length+' מתוך 3. ממשיכים לחפש.');
     }
@@ -153,26 +156,44 @@ class Laboratory extends Phaser.Scene {
     const puff=this.add.circle(this.robot.x,this.robot.y+30,Phaser.Math.Between(5,11),0x9df2e8,.55).setDepth(8);
     this.tweens.add({targets:puff,y:puff.y+20,alpha:0,scale:2,duration:450,onComplete:()=>puff.destroy()});
   }
+  private revealClue(){
+    if(this.save.stage!=='calibrate')return;
+    this.clueVisible=!this.clueVisible;
+    for(const item of this.clueArt)item.destroy();
+    this.clueArt=[];
+    if(this.clueVisible){
+      const paper=this.add.rectangle(600,260,385,225,0xf3dba5,.97).setStrokeStyle(7,0x8a6342).setDepth(42);
+      const heading=this.add.text(600,191,'THE PROFESSOR\'S NOTES',{fontFamily:'Arial',fontSize:'24px',color:'#3c2d2c'}).setOrigin(.5).setDepth(43);
+      const hint=this.add.text(600,251,'⚙  3   ·   2   ·   4  ⚙',{fontFamily:'Arial',fontSize:'34px',color:'#5c4857'}).setOrigin(.5).setDepth(43);
+      const footer=this.add.text(600,311,'לחצו שוב על הלוח לסגירה',{fontFamily:'Arial',fontSize:'18px',color:'#56423b'}).setOrigin(.5).setDepth(43);
+      this.clueArt=[paper,heading,hint,footer];
+      this.report('מצאתם את השרטוט של הפרופסור! הקוד הוא 3 · 2 · 4.');
+    }else this.report('סגרתם את השרטוט. עכשיו אפשר לכוון את החוגות.');
+  }
   turnDial(i:number){
     if(this.save.stage!=='calibrate')return;
     this.save.dials[i]=(this.save.dials[i]+1)%4;
     this.scatter(510+i*90,455,5);this.drawHotspots();
-    this.report('חוגות: '+this.save.dials.map(n=>n+1).join(' · ')+'. רמז: 3 · 2 · 4');
+    this.report('חוגות: '+this.save.dials.map(n=>n+1).join(' · ')+'. '+(this.clueVisible?'הקוד מהשרטוט: 3 · 2 · 4':'אפשר לחזור לשרטוט כדי לבדוק את הקוד.'));
   }
   activate(){
     if(this.save.stage!=='calibrate')return;
     if(!this.save.dials.every((n,i)=>n===DIAL_TARGET[i])){
       this.cameras.main.shake(220,.004);
-      this.report('ביפ! משהו לא מכוון. סדר החוגות הנכון: 3 · 2 · 4.');
+      this.report('ביפ! משהו לא מכוון. חפשו את השרטוט בלוח המעבדה כדי למצוא את הסדר.');
       return;
     }
-    this.save.stage='finale';this.drawHotspots();this.focus('wide');
+    this.save.stage='finale';this.clearClue();this.drawHotspots();this.focus('wide');
     this.time.delayedCall(850,()=>{if(this.save.stage==='finale')this.showDuck();});
     this.cameras.main.shake(1300,.012);this.cameras.main.flash(800,165,110,245);
     this.scatter(600,310,70);
     this.tweens.add({targets:this.machineGlow,scale:5,alpha:.8,duration:1400,yoyo:true});
     this.time.delayedCall(1000,()=>{if(this.save.stage==='finale')this.report('🎉 הצלחתם! המכונה התעוררה... וייצרה ברווז גומי ענק! 🦆 המשך יבוא!');});
     this.report('המכונה מתעוררת! תחזיקו חזק...');
+  }
+  private clearClue(){
+    for(const item of this.clueArt)item.destroy();
+    this.clueArt=[];this.clueVisible=false;
   }
   private showDuck(){
     if(this.finaleArt.length)return;
@@ -201,15 +222,16 @@ class Laboratory extends Phaser.Scene {
     else if(this.save.stage==='search'||this.save.stage==='robot')this.collect(item);
   }
   dial(i:number){this.turnDial(i);}
+  clue(){this.revealClue();}
   hint(){
     const stage=this.save.stage;
     if(stage==='intro')this.report('הפרופסור השאיר כפתור אדום ענק. מה כבר יכול להשתבש?');
     else if(stage==='search'||stage==='robot')this.report('חפשו את הסימונים הזוהרים: ספר, מגירה ורובוט. את הרובוט צריך לתפוס 3 פעמים.');
-    else if(stage==='calibrate')this.report('לחצו על החוגות עד שיופיעו המספרים 3, 2, 4 משמאל לימין.');
+    else if(stage==='calibrate')this.report('הרמז מוסתר בשרטוט שעל לוח המעבדה, בצד השמאלי של המכונה.');
     else this.report('ניצחתם! אפשר להתחיל משחק חדש.');
   }
   restart(){
-    this.robotMotion?.stop();this.robotRunning=false;
+    this.robotMotion?.stop();this.robotRunning=false;this.clearClue();
     for(const part of this.finaleArt)part.destroy();this.finaleArt=[];
     this.save={stage:'intro',found:[],dials:[0,0,0],robotHits:0};
     this.robot.setPosition(1000,395);this.robot.setAngle(0);
@@ -242,6 +264,7 @@ class Laboratory extends Phaser.Scene {
       </div>
     }
     @if (state.stage==='calibrate') {
+      <div class="toolbar"><button (click)="clue()">📜 פתחו את שרטוט הפרופסור</button></div>
       <div class="toolbar" aria-label="כיוון חוגות">
         <button (click)="dial(0)">⚙ חוגה 1: {{state.dials[0]+1}}</button>
         <button (click)="dial(1)">⚙ חוגה 2: {{state.dials[1]+1}}</button>
@@ -268,6 +291,7 @@ class AppComponent implements AfterViewInit,OnDestroy {
   hint(){this.scene()?.hint();}
   interact(item:'book'|'drawer'|'robot'){this.scene()?.interact(item);}
   dial(i:number){this.scene()?.dial(i);}
+  clue(){this.scene()?.clue();}
   activate(){this.scene()?.activate();}
   restart(){this.scene()?.restart();}
   ngOnDestroy(){this.game?.destroy(true);}
