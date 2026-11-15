@@ -50,7 +50,7 @@ class Laboratory extends Phaser.Scene {
     label(600,30,'⚡ פרופסור כאוס — המעבדה יצאה משליטה!',27);
     this.status=label(600,589,'חפשו שלושה גבישי אנרגיה כדי לתקן את המכונה',20);
     this.counter=label(600,635,'גבישים: 0 / 3',20,'#b9f4e8');
-    const button=(x:number,y,title:string,callback:()=>void)=>{
+    const button=(x:number,y:number,title:string,callback:()=>void)=>{
       const bg=this.add.rectangle(x,y,160,43,0x263b43,.96).setStrokeStyle(2,0xafe4e0).setInteractive({useHandCursor:true}).setDepth(100);
       const t=label(x,y,title,17);
       t.setBackgroundColor('transparent');
