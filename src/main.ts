@@ -352,7 +352,7 @@ class Laboratory extends Phaser.Scene {
     
     for(const part of this.finaleArt)part.destroy();this.finaleArt=[];
     this.save={stage:'intro',found:[],dials:[0,0,0],robotHits:0};
-    this.robot.setPosition(1000,395);this.robot.setAngle(0);this.robotOrb?.setVisible(false);(this.robot.list[1] as Phaser.GameObjects.Arc).setVisible(false);
+    this.robot.setPosition(1000,395);this.robot.setAngle(0);
     this.tweens.killTweensOf(this.machineGlow);this.machineGlow.setScale(1).setAlpha(.2);
     this.tweens.add({targets:this.machineGlow,alpha:.4,scale:1.35,duration:1150,yoyo:true,repeat:-1});
     this.drawHotspots();this.focus('wide');this.report('המעבדה מוכנה להרפתקה חדשה. לחצו על הכפתור האדום!');
