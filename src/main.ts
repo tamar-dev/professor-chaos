@@ -55,6 +55,7 @@ class Laboratory extends Phaser.Scene {
     this.loadSave();
     this.drawHotspots();
     this.focus('wide',false);
+    if(this.save.stage==='finale')this.showDuck();
     this.report(this.save.stage==='intro'?'המעבדה שקטה מדי... משהו עומד לקרות!':'ברוכים השבים למעבדה! ההתקדמות נשמרה.');
   }
   private loadSave(){
@@ -160,7 +161,7 @@ class Laboratory extends Phaser.Scene {
       return;
     }
     this.save.stage='finale';this.drawHotspots();this.focus('wide');
-    this.time.delayedCall(850,()=>this.showDuck());
+    this.time.delayedCall(850,()=>{if(this.save.stage==='finale')this.showDuck();});
     this.cameras.main.shake(1300,.012);this.cameras.main.flash(800,165,110,245);
     this.scatter(600,310,70);
     this.tweens.add({targets:this.machineGlow,scale:5,alpha:.8,duration:1400,yoyo:true});
@@ -168,6 +169,7 @@ class Laboratory extends Phaser.Scene {
     this.report('המכונה מתעוררת! תחזיקו חזק...');
   }
   private showDuck(){
+    if(this.finaleArt.length)return;
     // Draw the comic payoff as actual game objects, not merely as a status message.
     const shadow=this.add.ellipse(600,560,260,45,0x2b1c2b,.55).setDepth(30);
     const body=this.add.ellipse(600,490,220,165,0xffd44d).setStrokeStyle(5,0xfff0a0).setDepth(31);
