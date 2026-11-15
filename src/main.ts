@@ -26,7 +26,7 @@ class Laboratory extends Phaser.Scene {
   private announce:(state:ViewState)=>void=()=>{};
   constructor(){super('laboratory');}
   setReporter(fn:(state:ViewState)=>void){this.announce=fn;this.report('לחצו על התחלה כדי להעיר את המעבדה');}
-  preload(){this.load.image('laboratory','assets/lab-master.webp');}
+  preload(){this.load.image('laboratory','assets/lab-master.webp');this.load.svg('robot-sprite','assets/robot.svg',{width:160,height:170});}
   create(){
     this.cameras.main.setBackgroundColor('#281c28');
     if(this.textures.exists('laboratory')){
@@ -39,13 +39,14 @@ class Laboratory extends Phaser.Scene {
     this.tweens.add({targets:light,alpha:.26,scale:1.25,duration:1900,yoyo:true,repeat:-1});
     this.machineGlow=this.add.circle(600,320,45,0xc6a5ff,.18).setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({targets:this.machineGlow,alpha:.4,scale:1.35,duration:1150,yoyo:true,repeat:-1});
-    const body=this.add.rectangle(0,0,58,52,0x90d7c6,.9).setStrokeStyle(3,0xe5fffa);
-    const eye1=this.add.circle(-13,-6,5,0x183a45),eye2=this.add.circle(13,-6,5,0x183a45);
-    const antenna=this.add.circle(0,-33,7,0xffd489);
-    this.robot=this.add.container(1000,395,[body,eye1,eye2,antenna]).setDepth(9);
-    this.robot.setSize(75,75).setInteractive({useHandCursor:true});
-    const targetRing=this.add.circle(0,0,44,0xffe0a0,.06).setStrokeStyle(3,0xffdf98,.8);
-    this.robot.addAt(targetRing,0);
+    const robotSprite=this.textures.exists('robot-sprite')
+      ? this.add.image(0,0,'robot-sprite').setDisplaySize(100,106)
+      : this.add.rectangle(0,0,72,76,0x90d7c6).setStrokeStyle(3,0xe5fffa);
+    const targetRing=this.add.circle(0,0,58,0xffe0a0,.05).setStrokeStyle(2,0xffdf98,.55);
+    this.robot=this.add.container(1000,395,[targetRing,robotSprite]).setDepth(9);
+    this.robot.setSize(115,115).setInteractive({useHandCursor:true});
+    this.tweens.add({targets:targetRing,alpha:.28,scale:1.12,duration:850,yoyo:true,repeat:-1});
+    this.tweens.add({targets:robotSprite,y:-7,duration:1150,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
     this.robot.on('pointerdown',()=>this.tapRobot());
     this.input.keyboard?.on('keydown-ESC',()=>this.focus('wide'));
     this.input.keyboard?.on('keydown-ONE',()=>this.focus('desk'));
@@ -142,10 +143,15 @@ class Laboratory extends Phaser.Scene {
       return;
     }
     this.robotRunning=true;
+    this.focus('robots');
     const positions=[{x:920,y:260},{x:1090,y:355},{x:970,y:470},{x:1060,y:250}];
     const next=positions[this.save.robotHits%positions.length];
-    this.robotMotion=this.tweens.add({targets:this.robot,x:next.x,y:next.y,angle:this.save.robotHits%2?12:-12,duration:540,ease:'Sine.easeInOut',onComplete:()=>{this.robotRunning=false;}});
+    this.robotMotion=this.tweens.add({targets:this.robot,x:next.x,y:next.y,angle:this.save.robotHits%2?12:-12,duration:780,ease:'Sine.easeInOut',onUpdate:()=>{if(Math.random()<.16)this.robotTrail();},onComplete:()=>{this.robotRunning=false;}});
     this.report('הרובוט מתחמק! עוד '+(3-this.save.robotHits)+' תפיסות והוא נכנע.');
+  }
+  private robotTrail(){
+    const puff=this.add.circle(this.robot.x,this.robot.y+30,Phaser.Math.Between(5,11),0x9df2e8,.55).setDepth(8);
+    this.tweens.add({targets:puff,y:puff.y+20,alpha:0,scale:2,duration:450,onComplete:()=>puff.destroy()});
   }
   turnDial(i:number){
     if(this.save.stage!=='calibrate')return;
