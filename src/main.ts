@@ -41,6 +41,7 @@ class Laboratory extends Phaser.Scene {
     }
     const light=this.add.circle(600,300,115,0x8adce8,.08).setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({targets:light,alpha:.26,scale:1.25,duration:1900,yoyo:true,repeat:-1});
+    this.addAtmosphere();
     this.machineGlow=this.add.circle(600,320,45,0xc6a5ff,.18).setBlendMode(Phaser.BlendModes.ADD);
     this.tweens.add({targets:this.machineGlow,alpha:.4,scale:1.35,duration:1150,yoyo:true,repeat:-1});
     const robotSprite=this.textures.exists('robot-sprite')
@@ -63,6 +64,18 @@ class Laboratory extends Phaser.Scene {
     this.focus('wide',false);
     if(this.save.stage==='finale')this.showDuck();
     this.report(this.save.stage==='intro'?'המעבדה שקטה מדי... משהו עומד לקרות!':'ברוכים השבים למעבדה! ההתקדמות נשמרה.');
+  }
+  private addAtmosphere(){
+    // Ambient particles float in the same world space as the laboratory artwork.
+    for(let i=0;i<34;i++){
+      const x=Phaser.Math.Between(20,1180);
+      const y=Phaser.Math.Between(40,610);
+      const radius=Phaser.Math.FloatBetween(1.3,3.6);
+      const mote=this.add.circle(x,y,radius,i%3===0?0x9deee8:0xffdba0,Phaser.Math.FloatBetween(.13,.35)).setDepth(3);
+      this.tweens.add({targets:mote,y:y-Phaser.Math.Between(20,80),x:x+Phaser.Math.Between(-35,35),alpha:0,duration:Phaser.Math.Between(3200,7300),yoyo:true,repeat:-1,delay:Phaser.Math.Between(0,2500),ease:'Sine.easeInOut'});
+    }
+    const lamp=this.add.circle(480,120,70,0xffd69d,.035).setBlendMode(Phaser.BlendModes.ADD).setDepth(2);
+    this.tweens.add({targets:lamp,alpha:.2,scale:1.4,duration:2300,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
   }
   private loadSave(){
     try{
@@ -115,6 +128,7 @@ class Laboratory extends Phaser.Scene {
     if(this.save.stage!=='intro')return;
     this.save.stage='search';this.focus('wide');
     this.cameras.main.shake(650,.006);this.cameras.main.flash(450,170,105,230);
+    this.time.delayedCall(400,()=>{if(this.save.stage==='search')this.robotSpeak('אופס! לא אני לחצתי!');});
     this.scatter(600,350,22);
     this.drawHotspots();
     this.report('אוי לא! שלושה גבישים נעלמו. חפשו בספרים, במגירה ואצל הרובוט!');
