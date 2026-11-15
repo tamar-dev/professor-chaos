@@ -2,62 +2,112 @@ import { Component, AfterViewInit, OnDestroy } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import Phaser from 'phaser';
 
+type Zone = 'wide' | 'desk' | 'machine' | 'robots';
 class Laboratory extends Phaser.Scene {
   private found = new Set<string>();
   private status!: Phaser.GameObjects.Text;
-  private count!: Phaser.GameObjects.Text;
-  constructor(){super('laboratory');}
+  private counter!: Phaser.GameObjects.Text;
+  private machineActivated = false;
+  private zone: Zone = 'wide';
+  private robot!: Phaser.GameObjects.Container;
+  private robotCaught = false;
+  private world!: Phaser.GameObjects.Container;
+  private hud!: Phaser.GameObjects.Container;
+  constructor(){ super('laboratory'); }
+  preload(){
+    this.load.image('laboratory','assets/lab-master.webp');
+    this.load.on('loaderror',(file:Phaser.Loader.File)=>{ if(file.key==='laboratory') console.warn('Upload public/assets/lab-master.webp to enable the cinematic artwork.'); });
+  }
   create(){
-    const g=this.add.graphics();
-    g.fillGradientStyle(0x35252d,0x35252d,0x78513e,0x78513e).fillRect(0,0,1200,675);
-    g.fillStyle(0x493229).fillRect(0,490,1200,185);
-    for(let y=60;y<490;y+=42){g.lineStyle(1,0xd5a46f,.1).lineBetween(0,y,1200,y);}
-    const txt=(x:number,y:number,s:string,size=22)=>this.add.text(x,y,s,{fontFamily:'Arial',fontSize:size+'px',color:'#fff0d5'}).setOrigin(.5);
-    txt(600,42,'⚡ המעבדה של פרופסור כאוס ⚡',36);
-    this.add.rectangle(170,310,280,330,0x50382e).setStrokeStyle(8,0xb88b60);
-    for(const y of [210,290,370,450])this.add.rectangle(170,y,275,10,0xc39a6a);
-    for(let i=0;i<24;i++)this.add.rectangle(53+i%8*32,172+Math.floor(i/8)*80,18,31,[0xb97971,0x8ac5b8,0xcbb07e,0xb7a5cf][i%4]);
-    this.add.rectangle(175,510,320,25,0xb88b5c);
-    this.add.rectangle(65,575,20,110,0x795037);this.add.rectangle(290,575,20,110,0x795037);
-    this.add.rectangle(600,325,325,345,0x63525a).setStrokeStyle(10,0xcba472);
-    this.add.circle(600,302,112,0x345a66).setStrokeStyle(11,0xa5e8e3);
-    const energy=this.add.circle(600,302,70,0x9cdbed,.8);
-    this.tweens.add({targets:energy,alpha:.35,scale:1.16,duration:1200,yoyo:true,repeat:-1});
-    for(const x of [520,600,680])this.add.circle(x,444,20,0x30282c).setStrokeStyle(5,0xf0c48b);
-    this.add.rectangle(1030,320,275,345,0x5b4338).setStrokeStyle(8,0xb78c61);
-    for(const y of [230,330,430])this.add.rectangle(1030,y,270,10,0xb78c61);
-    const robot=this.add.container(1030,275,[this.add.rectangle(0,0,96,82,0x91c9be).setStrokeStyle(6,0xe4f9e9),this.add.circle(-22,-8,9,0xffffff),this.add.circle(22,-8,9,0xffffff)]);
-    this.tweens.add({targets:robot,y:265,duration:800,yoyo:true,repeat:-1});
-    this.status=txt(600,596,'מצאו שלושה גבישי אנרגיה והפעילו את המכונה',22);
-    this.count=txt(600,642,'גבישים: 0 / 3',21);
-    const action=(x:number,y:number,label:string,cb:()=>void)=>{
-      const b=this.add.rectangle(x,y,172,46,0x3d5860,.96).setStrokeStyle(2,0xb4e9e4).setInteractive({useHandCursor:true});
-      txt(x,y,label,18);b.on('pointerdown',cb);b.on('pointerover',()=>b.setFillStyle(0x63868a));b.on('pointerout',()=>b.setFillStyle(0x3d5860));
+    const centerX=600,centerY=337;
+    const worldObjects: Phaser.GameObjects.GameObject[]=[];
+    const add=(obj:Phaser.GameObjects.GameObject)=>{worldObjects.push(obj);return obj;};
+    if(this.textures.exists('laboratory')){
+      add(this.add.image(centerX,centerY,'laboratory').setDisplaySize(1200,675));
+    }else{
+      const g=this.add.graphics();g.fillGradientStyle(0x35252d,0x35252d,0x78513e,0x78513e).fillRect(0,0,1200,675);
+      g.fillStyle(0x493229).fillRect(0,490,1200,185);add(g);
+      add(this.add.rectangle(175,360,330,300,0x68432f));
+      add(this.add.rectangle(600,330,330,430,0x70505e));
+      add(this.add.circle(600,280,120,0x3b849c).setStrokeStyle(12,0xb0e6ed));
+      add(this.add.rectangle(1030,360,290,300,0x66503f));
+    }
+    const glow=add(this.add.circle(600,215,36,0xb8a4ff,.18).setBlendMode(Phaser.BlendModes.ADD));
+    this.tweens.add({targets:glow,alpha:.42,scale:1.6,duration:1800,yoyo:true,repeat:-1});
+    const robotBody=this.add.rectangle(0,0,45,40,0x9ad9cf,.8).setStrokeStyle(2,0xe4ffff);
+    const robotEye1=this.add.circle(-10,-4,4,0x17394a);
+    const robotEye2=this.add.circle(10,-4,4,0x17394a);
+    this.robot=this.add.container(990,386,[robotBody,robotEye1,robotEye2]);
+    add(this.robot);
+    this.tweens.add({targets:this.robot,y:379,duration:850,yoyo:true,repeat:-1});
+    this.world=this.add.container(0,0,worldObjects);
+    this.world.setDepth(0);
+    const hudItems: Phaser.GameObjects.GameObject[]=[];
+    const label=(x:number,y:number,value:string,size=22,color='#fff2d9')=>{
+      const t=this.add.text(x,y,value,{fontFamily:'Arial',fontSize:size+'px',color,align:'center',backgroundColor:'#251c29dd',padding:{x:10,y:7}}).setOrigin(.5).setDepth(100);
+      hudItems.push(t);return t;
+    };
+    label(600,30,'⚡ פרופסור כאוס — המעבדה יצאה משליטה!',27);
+    this.status=label(600,589,'חפשו שלושה גבישי אנרגיה כדי לתקן את המכונה',20);
+    this.counter=label(600,635,'גבישים: 0 / 3',20,'#b9f4e8');
+    const button=(x:number,y,title:string,callback:()=>void)=>{
+      const bg=this.add.rectangle(x,y,160,43,0x263b43,.96).setStrokeStyle(2,0xafe4e0).setInteractive({useHandCursor:true}).setDepth(100);
+      const t=label(x,y,title,17);
+      t.setBackgroundColor('transparent');
+      bg.on('pointerdown',callback);
+      bg.on('pointerover',()=>bg.setFillStyle(0x517b80));
+      bg.on('pointerout',()=>bg.setFillStyle(0x263b43));
+      hudItems.push(bg);
     };
     const collect=(id:string)=>{
-      if(this.found.has(id))return;
-      this.found.add(id);this.count.setText('גבישים: '+this.found.size+' / 3');
-      this.status.setText(this.found.size===3?'מצוין! אפשר להפעיל את המכונה':'נמצא גביש אנרגיה!');
-      this.cameras.main.flash(200,150,220,220);
+      if(this.found.has(id)){this.status.setText('כבר מצאתם את הגביש הזה!');return;}
+      this.found.add(id);
+      this.counter.setText('גבישים: '+this.found.size+' / 3');
+      this.status.setText(this.found.size===3?'כל הגבישים נמצאו! הפעילו את המכונה':'נמצא גביש אנרגיה! ✨');
+      this.cameras.main.flash(180,130,225,210);
     };
-    action(165,115,'📖 ספרים',()=>collect('book'));
-    action(175,555,'🗄 מגירה',()=>collect('drawer'));
-    action(1030,510,'🤖 תפוס רובוט',()=>this.tweens.add({targets:robot,x:900,duration:300,yoyo:true,onComplete:()=>collect('robot')}));
-    action(600,535,'⚡ הפעל מכונה',()=>{
-      if(this.found.size<3){this.status.setText('חסרים '+(3-this.found.size)+' גבישים');return;}
-      this.cameras.main.shake(500,.008);this.cameras.main.flash(600,180,110,255);this.status.setText('🎉 המכונה פועלת! המשך יבוא...');
+    button(160,96,'📚 ספרים',()=>{this.focus('desk');collect('book');});
+    button(160,538,'🗄 מגירה',()=>{this.focus('desk');collect('drawer');});
+    button(1040,505,'🤖 תפוס רובוט',()=>{
+      this.focus('robots');
+      if(this.robotCaught){this.status.setText('הרובוט כבר נתפס!');return;}
+      this.robotCaught=true;
+      this.tweens.add({targets:this.robot,x:1070,angle:25,duration:320,yoyo:true,onComplete:()=>collect('robot')});
     });
-    const zoom=(x:number,y:number,z:number)=>{this.cameras.main.pan(x,y,650,'Cubic.easeInOut');this.cameras.main.zoomTo(z,650,'Cubic.easeInOut');};
-    action(375,95,'🔎 שולחן',()=>zoom(175,330,1.65));
-    action(600,95,'🔎 מכונה',()=>zoom(600,325,1.5));
-    action(825,95,'🔎 רובוטים',()=>zoom(1030,330,1.65));
-    action(600,158,'↩ כל החדר',()=>zoom(600,337,1));
+    button(600,515,'🔴 הפעל מכונה',()=>{
+      this.focus('machine');
+      if(this.found.size<3){this.status.setText('חסרים '+(3-this.found.size)+' גבישים');return;}
+      if(this.machineActivated)return;
+      this.machineActivated=true;
+      this.cameras.main.shake(500,.007);this.cameras.main.flash(600,160,100,255);
+      this.status.setText('🎉 המכונה פועלת! המשך יבוא...');
+    });
+    button(245,145,'🔎 שולחן',()=>this.focus('desk'));
+    button(425,145,'🔎 מכונה',()=>this.focus('machine'));
+    button(775,145,'🔎 רובוטים',()=>this.focus('robots'));
+    button(955,145,'↩ כל החדר',()=>this.focus('wide'));
+    this.hud=this.add.container(0,0,hudItems).setDepth(100);
+    this.input.keyboard?.on('keydown-ESC',()=>this.focus('wide'));
+  }
+  private focus(zone:Zone){
+    this.zone=zone;
+    const targets:{[K in Zone]:{x:number;y:number;zoom:number}}={
+      wide:{x:600,y:337,zoom:1},
+      desk:{x:270,y:360,zoom:1.65},
+      machine:{x:600,y:315,zoom:1.55},
+      robots:{x:990,y:350,zoom:1.65}
+    };
+    const target=targets[zone];
+    this.cameras.main.pan(target.x,target.y,650,'Cubic.easeInOut');
+    this.cameras.main.zoomTo(target.zoom,650,'Cubic.easeInOut');
+    // HUD stays fixed on screen through Phaser's scrollFactor(0).
+    this.hud.list.forEach(obj=>{if('setScrollFactor' in obj)(obj as Phaser.GameObjects.Text).setScrollFactor(0);});
   }
 }
-@Component({selector:'app-root',standalone:true,template:`<main><h1>פרופסור כאוס ⚡</h1><p>משחק הרפתקה משפחתי — אבטיפוס ראשוני</p><section id="game" aria-label="המעבדה האינטראקטיבית"></section><p>מצאו שלושה גבישים, התקרבו לאזורים והפעילו את המכונה</p></main>`})
+@Component({selector:'app-root',standalone:true,template:`<main><h1>פרופסור כאוס ⚡</h1><p>המעבדה יצאה משליטה — מצאו את הגבישים והצילו את ההמצאה!</p><section id="game" aria-label="מעבדת פרופסור כאוס"></section><p>לחצו על האזורים כדי להתקרב · Esc לחזרה לחדר</p></main>`})
 class AppComponent implements AfterViewInit,OnDestroy {
   private game?:Phaser.Game;
-  ngAfterViewInit(){this.game=new Phaser.Game({type:Phaser.AUTO,parent:'game',width:1200,height:675,scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:[Laboratory]});}
+  ngAfterViewInit(){this.game=new Phaser.Game({type:Phaser.AUTO,parent:'game',width:1200,height:675,backgroundColor:'#231d29',scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},scene:[Laboratory]});}
   ngOnDestroy(){this.game?.destroy(true);}
 }
 bootstrapApplication(AppComponent).catch(console.error);
