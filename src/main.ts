@@ -188,6 +188,7 @@ class Laboratory extends Phaser.Scene {
     const slot=this.inventoryGems[this.save.found.length-1];
     if(!slot){onComplete();return;}
     this.collecting=true;
+    const pickupId=this.sequenceId;
     const gem=this.add.circle(origin.x,origin.y,14,id==='book'?0x8cefe8:id==='drawer'?0xc5a1ff:0xffc783,.98)
       .setStrokeStyle(3,0xf9ffff,1).setDepth(80).setBlendMode(Phaser.BlendModes.ADD);
     const halo=this.add.circle(origin.x,origin.y,32,0x8cefff,.16).setDepth(79).setBlendMode(Phaser.BlendModes.ADD);
@@ -196,7 +197,7 @@ class Laboratory extends Phaser.Scene {
       this.tweens.add({targets:gem,x:slot.x,y:slot.y,scale:.6,duration:680,ease:'Cubic.easeInOut',onUpdate:()=>{if(Math.random()<.15)this.robotTrailAt(gem.x,gem.y);},onComplete:()=>{
         gem.destroy();slot.setVisible(true);slot.setScale(.3);
         this.tweens.add({targets:slot,scale:1,duration:300,ease:'Back.easeOut'});
-        this.collecting=false;onComplete();
+        this.collecting=false;if(pickupId===this.sequenceId)onComplete();
       }});
     }});
   }
@@ -257,6 +258,7 @@ class Laboratory extends Phaser.Scene {
   private inspectObject(id:'book'|'drawer'){
     if(this.inspecting||this.collecting||this.save.found.includes(id)||!['search','robot'].includes(this.save.stage))return;
     this.inspecting=true;
+    const inspectionId=this.sequenceId;
     const target=id==='book'?{x:312,y:438}:{x:280,y:550};
     this.focus('desk');
     const shimmer=this.add.ellipse(target.x,target.y,60,18,0xffdba2,.04)
@@ -264,6 +266,7 @@ class Laboratory extends Phaser.Scene {
     this.tweens.add({targets:shimmer,scaleX:1.45,alpha:.28,duration:420,yoyo:true,hold:120,onComplete:()=>shimmer.destroy()});
     this.report(id==='book'?'בין דפי הספר מסתתר משהו...':'משהו מנצנץ בתוך המגירה...');
     this.time.delayedCall(700,()=>{
+      if(inspectionId!==this.sequenceId)return;
       this.inspecting=false;
       if(!this.save.found.includes(id))this.collect(id);
     });
