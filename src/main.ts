@@ -259,14 +259,36 @@ class Laboratory extends Phaser.Scene {
     if(this.inspecting||this.collecting||this.save.found.includes(id)||!['search','robot'].includes(this.save.stage))return;
     this.inspecting=true;
     const inspectionId=this.sequenceId;
-    const target=id==='book'?{x:312,y:438}:{x:280,y:550};
     this.focus('desk');
-    const shimmer=this.add.ellipse(target.x,target.y,60,18,0xffdba2,.04)
-      .setBlendMode(Phaser.BlendModes.ADD).setDepth(6);
-    this.tweens.add({targets:shimmer,scaleX:1.45,alpha:.28,duration:420,yoyo:true,hold:120,onComplete:()=>shimmer.destroy()});
-    this.report(id==='book'?'בין דפי הספר מסתתר משהו...':'משהו מנצנץ בתוך המגירה...');
-    this.time.delayedCall(700,()=>{
-      if(inspectionId!==this.sequenceId)return;
+    const target=id==='book'?{x:312,y:438}:{x:280,y:550};
+    const object=this.add.container(target.x,target.y).setDepth(12);
+    const shadow=this.add.ellipse(0,13,id==='book'?76:92,18,0x100d19,.35);
+    object.add(shadow);
+    if(id==='book'){
+      // Page-turn motion: a narrow parchment leaf folds around its spine.
+      const cover=this.add.rectangle(0,0,78,46,0x725039,.93).setStrokeStyle(3,0xb88b5b);
+      const pages=this.add.rectangle(1,-3,70,38,0xe9d7ae,.94).setStrokeStyle(2,0xc7a57a);
+      const leaf=this.add.rectangle(18,-3,34,36,0xffebbf,.98).setOrigin(0,0.5);
+      const spine=this.add.rectangle(-3,0,5,43,0x67422d,.95);
+      object.add([cover,pages,leaf,spine]);
+      this.tweens.add({targets:leaf,scaleX:.03,duration:270,ease:'Sine.easeIn',onComplete:()=>{
+        leaf.x=-4;leaf.setOrigin(1,.5);
+        this.tweens.add({targets:leaf,scaleX:1,duration:270,ease:'Sine.easeOut'});
+      }});
+    }else{
+      // The drawer front moves outward with its shadow and revealed interior.
+      const cavity=this.add.rectangle(0,0,84,35,0x241727,.95).setStrokeStyle(3,0x8c6041);
+      const front=this.add.rectangle(0,4,90,30,0x765038,.95).setStrokeStyle(3,0xb58a5a);
+      const handle=this.add.circle(0,5,5,0xe3b96f,.95);
+      object.add([cavity,front,handle]);
+      this.tweens.add({targets:[front,handle],y:'+=25',duration:520,ease:'Cubic.easeOut'});
+    }
+    object.setAlpha(0);
+    this.tweens.add({targets:object,alpha:.92,duration:150});
+    this.report(id==='book'?'דפי הספר נפתחים... משהו מסתתר ביניהם!':'המגירה נשלפת... יש בתוכה משהו נוצץ!');
+    this.time.delayedCall(740,()=>{
+      if(inspectionId!==this.sequenceId){object.destroy();return;}
+      this.tweens.add({targets:object,alpha:0,duration:180,onComplete:()=>object.destroy()});
       this.inspecting=false;
       if(!this.save.found.includes(id))this.collect(id);
     });
