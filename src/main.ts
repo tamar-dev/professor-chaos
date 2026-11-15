@@ -25,6 +25,8 @@ class Laboratory extends Phaser.Scene {
   private finaleArt:Phaser.GameObjects.GameObject[]=[];
   private clueVisible=false;
   private clueArt:Phaser.GameObjects.GameObject[]=[];
+  private robotDialogue?:Phaser.GameObjects.Text;
+  private robotDialogueTimer?:Phaser.Time.TimerEvent;
   private announce:(state:ViewState)=>void=()=>{};
   constructor(){super('laboratory');}
   setReporter(fn:(state:ViewState)=>void){this.announce=fn;this.report('לחצו על התחלה כדי להעיר את המעבדה');}
@@ -50,6 +52,7 @@ class Laboratory extends Phaser.Scene {
     this.tweens.add({targets:targetRing,alpha:.28,scale:1.12,duration:850,yoyo:true,repeat:-1});
     this.tweens.add({targets:robotSprite,y:-7,duration:1150,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
     this.robot.on('pointerdown',()=>this.tapRobot());
+    this.robotDialogue=this.add.text(1000,300,'',{fontFamily:'Arial',fontSize:'19px',color:'#fff7d4',backgroundColor:'#302331ee',padding:{x:13,y:9}}).setOrigin(.5).setDepth(18).setVisible(false);
     this.input.keyboard?.on('keydown-ESC',()=>this.focus('wide'));
     this.input.keyboard?.on('keydown-ONE',()=>this.focus('desk'));
     this.input.keyboard?.on('keydown-TWO',()=>this.focus('machine'));
@@ -139,6 +142,7 @@ class Laboratory extends Phaser.Scene {
     this.save.stage='robot';
     this.save.robotHits++;
     this.robotMotion?.stop();
+    this.robotSpeak(['','תפסתם אותי? רק בחלום!','היי! אני בכלל לא פה!','בסדר, בסדר! קחו את הגביש!'][this.save.robotHits]);
     this.scatter(this.robot.x,this.robot.y,7);
     if(this.save.robotHits>=3){
       this.robotRunning=false;this.robot.setPosition(1000,395);
@@ -151,6 +155,13 @@ class Laboratory extends Phaser.Scene {
     const next=positions[this.save.robotHits%positions.length];
     this.robotMotion=this.tweens.add({targets:this.robot,x:next.x,y:next.y,angle:this.save.robotHits%2?12:-12,duration:780,ease:'Sine.easeInOut',onUpdate:()=>{if(Math.random()<.16)this.robotTrail();},onComplete:()=>{this.robotRunning=false;}});
     this.report('הרובוט מתחמק! עוד '+(3-this.save.robotHits)+' תפיסות והוא נכנע.');
+  }
+  private robotSpeak(message:string){
+    const bubble=this.robotDialogue;
+    if(!bubble)return;
+    this.robotDialogueTimer?.remove(false);
+    bubble.setText(message).setPosition(Phaser.Math.Clamp(this.robot.x,760,1100),this.robot.y-105).setVisible(true).setAlpha(1);
+    this.robotDialogueTimer=this.time.delayedCall(1350,()=>bubble.setVisible(false));
   }
   private robotTrail(){
     const puff=this.add.circle(this.robot.x,this.robot.y+30,Phaser.Math.Between(5,11),0x9df2e8,.55).setDepth(8);
@@ -183,7 +194,7 @@ class Laboratory extends Phaser.Scene {
       this.report('ביפ! משהו לא מכוון. חפשו את השרטוט בלוח המעבדה כדי למצוא את הסדר.');
       return;
     }
-    this.save.stage='finale';this.clearClue();this.drawHotspots();this.focus('wide');
+    this.save.stage='finale';this.robotDialogueTimer?.remove(false);this.robotDialogue?.setVisible(false);this.clearClue();this.drawHotspots();this.focus('wide');
     this.time.delayedCall(850,()=>{if(this.save.stage==='finale')this.showDuck();});
     this.cameras.main.shake(1300,.012);this.cameras.main.flash(800,165,110,245);
     this.scatter(600,310,70);
@@ -232,6 +243,7 @@ class Laboratory extends Phaser.Scene {
   }
   restart(){
     this.robotMotion?.stop();this.robotRunning=false;this.clearClue();
+    this.robotDialogueTimer?.remove(false);this.robotDialogue?.setVisible(false);
     for(const part of this.finaleArt)part.destroy();this.finaleArt=[];
     this.save={stage:'intro',found:[],dials:[0,0,0],robotHits:0};
     this.robot.setPosition(1000,395);this.robot.setAngle(0);
