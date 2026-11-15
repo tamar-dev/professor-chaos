@@ -168,6 +168,11 @@ class Laboratory extends Phaser.Scene {
     if(animate){this.cameras.main.pan(t.x,t.y,600,'Cubic.easeInOut');this.cameras.main.zoomTo(t.zoom,600,'Cubic.easeInOut');}
     else{this.cameras.main.centerOn(t.x,t.y);this.cameras.main.setZoom(t.zoom);}
   }
+  interact(item:'book'|'drawer'|'robot'){
+    if(item==='robot')this.tapRobot();
+    else if(this.save.stage==='search'||this.save.stage==='robot')this.collect(item);
+  }
+  dial(i:number){this.turnDial(i);}
   hint(){
     const stage=this.save.stage;
     if(stage==='intro')this.report('הפרופסור השאיר כפתור אדום ענק. מה כבר יכול להשתבש?');
@@ -197,6 +202,20 @@ class Laboratory extends Phaser.Scene {
     <div class="toolbar"><button (click)="start()" [disabled]="state.stage!=='intro'">▶ התחילו הרפתקה</button>
       <button (click)="hint()">💡 רמז</button><button (click)="activate()" [disabled]="state.stage!=='calibrate'">⚡ הפעילו מכונה</button>
       <button (click)="restart()">↻ התחלה מחדש</button></div>
+    @if (state.stage==='search'||state.stage==='robot') {
+      <div class="toolbar" aria-label="פעולות חקירה נגישות">
+        <button (click)="interact('book')">📚 בדקו ספר</button>
+        <button (click)="interact('drawer')">🗄 פתחו מגירה</button>
+        <button (click)="interact('robot')">🤖 תפסו רובוט</button>
+      </div>
+    }
+    @if (state.stage==='calibrate') {
+      <div class="toolbar" aria-label="כיוון חוגות">
+        <button (click)="dial(0)">⚙ חוגה 1: {{state.dials[0]+1}}</button>
+        <button (click)="dial(1)">⚙ חוגה 2: {{state.dials[1]+1}}</button>
+        <button (click)="dial(2)">⚙ חוגה 3: {{state.dials[2]+1}}</button>
+      </div>
+    }
     <p class="help">לחצו על העיגולים הזוהרים בתוך החדר · Esc לחזרה למבט הכללי · מקשים 1–3 למעבר אזורים · H לרמז</p>
   </main>`
 })
@@ -215,6 +234,8 @@ class AppComponent implements AfterViewInit,OnDestroy {
   focus(z:Zone){this.scene()?.focus(z);}
   start(){this.scene()?.start();}
   hint(){this.scene()?.hint();}
+  interact(item:'book'|'drawer'|'robot'){this.scene()?.interact(item);}
+  dial(i:number){this.scene()?.dial(i);}
   activate(){this.scene()?.activate();}
   restart(){this.scene()?.restart();}
   ngOnDestroy(){this.game?.destroy(true);}
