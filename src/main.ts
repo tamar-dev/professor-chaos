@@ -27,6 +27,9 @@ class Laboratory extends Phaser.Scene {
   private clueArt:Phaser.GameObjects.GameObject[]=[];
   private robotDialogue?:Phaser.GameObjects.Text;
   private robotDialogueTimer?:Phaser.Time.TimerEvent;
+  private cinematic?:Phaser.GameObjects.Container;
+  private cinematicBusy=false;
+  private sequenceId=0;
   private announce:(state:ViewState)=>void=()=>{};
   constructor(){super('laboratory');}
   setReporter(fn:(state:ViewState)=>void){this.announce=fn;this.report('לחצו על התחלה כדי להעיר את המעבדה');}
@@ -60,6 +63,7 @@ class Laboratory extends Phaser.Scene {
     this.input.keyboard?.on('keydown-THREE',()=>this.focus('robots'));
     this.input.keyboard?.on('keydown-H',()=>this.hint());
     this.loadSave();
+    this.buildCinema();
     this.drawHotspots();
     this.focus('wide',false);
     if(this.save.stage==='finale')this.showDuck();
@@ -76,6 +80,30 @@ class Laboratory extends Phaser.Scene {
     }
     const lamp=this.add.circle(480,120,70,0xffd69d,.035).setBlendMode(Phaser.BlendModes.ADD).setDepth(2);
     this.tweens.add({targets:lamp,alpha:.2,scale:1.4,duration:2300,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
+  }
+  private buildCinema(){
+    const top=this.add.rectangle(600,27,1200,54,0x08090e,1);
+    const bottom=this.add.rectangle(600,648,1200,54,0x08090e,1);
+    const tint=this.add.rectangle(600,337,1200,675,0x0a0916,.45);
+    const caption=this.add.text(600,570,'',{fontFamily:'Arial',fontSize:'34px',fontStyle:'bold',color:'#fff0cb',stroke:'#211a2a',strokeThickness:7,align:'center',wordWrap:{width:1000}}).setOrigin(.5);
+    this.cinematic=this.add.container(0,0,[tint,top,bottom,caption]).setDepth(900).setScrollFactor(0).setVisible(false);
+  }
+  private cinematicShot(message:string,duration:number,callback:()=>void){
+    const id=++this.sequenceId;
+    this.cinematicBusy=true;
+    const layer=this.cinematic;
+    if(layer){
+      layer.setVisible(true).setAlpha(0);
+      const caption=layer.list[3] as Phaser.GameObjects.Text;
+      caption.setText(message);
+      this.tweens.add({targets:layer,alpha:1,duration:320,ease:'Sine.easeOut'});
+    }
+    this.time.delayedCall(duration,()=>{
+      if(id!==this.sequenceId)return;
+      if(layer)this.tweens.add({targets:layer,alpha:0,duration:280,onComplete:()=>layer.setVisible(false)});
+      this.cinematicBusy=false;
+      callback();
+    });
   }
   private loadSave(){
     try{
@@ -126,12 +154,17 @@ class Laboratory extends Phaser.Scene {
   }
   start(){
     if(this.save.stage!=='intro')return;
-    this.save.stage='search';this.focus('wide');
-    this.cameras.main.shake(650,.006);this.cameras.main.flash(450,170,105,230);
-    this.time.delayedCall(400,()=>{if(this.save.stage==='search')this.robotSpeak('אופס! לא אני לחצתי!');});
-    this.scatter(600,350,22);
-    this.drawHotspots();
-    this.report('אוי לא! שלושה גבישים נעלמו. חפשו בספרים, במגירה ואצל הרובוט!');
+    this.save.stage='search';this.focus('machine');
+    this.report('רגע... למה כל האורות כבו?');
+    this.cinematicShot('הייתה רק הוראה אחת...\\nלא ללחוץ על הכפתור האדום.',1550,()=>{
+      if(this.save.stage!=='search')return;
+      this.cameras.main.shake(900,.012);this.cameras.main.flash(550,170,105,230);
+      this.scatter(600,350,45);
+      this.robotSpeak('אופס! לא אני לחצתי!');
+      this.focus('wide');
+      this.drawHotspots();
+      this.report('אזעקה! שלושה גבישי אנרגיה נעלמו. המעבדה בידיים שלכם!');
+    });
   }
   private scatter(x:number,y:number,n:number){
     for(let i=0;i<n;i++){
@@ -141,7 +174,7 @@ class Laboratory extends Phaser.Scene {
     }
   }
   private collect(id:Item){
-    if(this.save.found.includes(id)||this.save.stage==='intro')return;
+    if(this.cinematicBusy||this.save.found.includes(id)||this.save.stage==='intro')return;
     this.save.found.push(id);this.scatter(id==='book'?170:id==='drawer'?260:1000,id==='book'?278:id==='drawer'?505:400,15);
     this.cameras.main.flash(160,130,220,210);
     if(this.save.found.length===3){
@@ -152,7 +185,7 @@ class Laboratory extends Phaser.Scene {
     }
   }
   private tapRobot(){
-    if(this.robotRunning||this.save.found.includes('robot')||!['search','robot'].includes(this.save.stage))return;
+    if(this.cinematicBusy||this.robotRunning||this.save.found.includes('robot')||!['search','robot'].includes(this.save.stage))return;
     this.save.stage='robot';
     this.save.robotHits++;
     this.robotMotion?.stop();
@@ -208,13 +241,17 @@ class Laboratory extends Phaser.Scene {
       this.report('ביפ! משהו לא מכוון. חפשו את השרטוט בלוח המעבדה כדי למצוא את הסדר.');
       return;
     }
-    this.save.stage='finale';this.robotDialogueTimer?.remove(false);this.robotDialogue?.setVisible(false);this.clearClue();this.drawHotspots();this.focus('wide');
-    this.time.delayedCall(850,()=>{if(this.save.stage==='finale')this.showDuck();});
-    this.cameras.main.shake(1300,.012);this.cameras.main.flash(800,165,110,245);
-    this.scatter(600,310,70);
-    this.tweens.add({targets:this.machineGlow,scale:5,alpha:.8,duration:1400,yoyo:true});
-    this.time.delayedCall(1000,()=>{if(this.save.stage==='finale')this.report('🎉 הצלחתם! המכונה התעוררה... וייצרה ברווז גומי ענק! 🦆 המשך יבוא!');});
-    this.report('המכונה מתעוררת! תחזיקו חזק...');
+    this.save.stage='finale';this.robotDialogueTimer?.remove(false);this.robotDialogue?.setVisible(false);this.clearClue();this.drawHotspots();this.focus('machine');
+    this.report('המערכת נטענת...');
+    this.tweens.add({targets:this.machineGlow,scale:4,alpha:.8,duration:1250,yoyo:true});
+    this.cinematicShot('מערכת האנרגיה: 100%\\nאזהרה: תוצאה בלתי צפויה!',1800,()=>{
+      if(this.save.stage!=='finale')return;
+      this.cameras.main.shake(1200,.014);this.cameras.main.flash(950,210,165,255);
+      this.scatter(600,310,90);
+      this.focus('wide');
+      this.time.delayedCall(400,()=>{if(this.save.stage==='finale')this.showDuck();});
+      this.report('🎉 הצלחתם! רגע... זו לא בדיוק ההמצאה שתכננו. 🦆');
+    });
   }
   private clearClue(){
     for(const item of this.clueArt)item.destroy();
@@ -256,6 +293,7 @@ class Laboratory extends Phaser.Scene {
     else this.report('ניצחתם! אפשר להתחיל משחק חדש.');
   }
   restart(){
+    this.sequenceId++;this.cinematicBusy=false;this.cinematic?.setVisible(false);
     this.robotMotion?.stop();this.robotRunning=false;this.clearClue();
     this.robotDialogueTimer?.remove(false);this.robotDialogue?.setVisible(false);
     for(const part of this.finaleArt)part.destroy();this.finaleArt=[];
