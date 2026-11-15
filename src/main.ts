@@ -75,14 +75,8 @@ class Laboratory extends Phaser.Scene {
     const shade=this.add.graphics().setDepth(1);
     shade.fillGradientStyle(0x060914,0x060914,0x130b1d,0x130b1d,.42,.18,.35,.45);
     shade.fillRect(0,0,1200,675);
-    // Professor lives on a separate layer; his gesture and silhouette can move independently.
-    if(this.textures.exists('professor')){
-      const professor=this.add.image(850,255,'professor').setDisplaySize(230,283).setDepth(6);
-      professor.setOrigin(.5,.5);
-      this.tweens.add({targets:professor,y:250,angle:1.6,duration:1900,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
-      const deskGlow=this.add.ellipse(848,396,230,65,0xffd0a1,.12).setDepth(5).setBlendMode(Phaser.BlendModes.ADD);
-      this.tweens.add({targets:deskGlow,alpha:.3,scaleX:1.2,duration:2200,yoyo:true,repeat:-1});
-    }
+    // Keep the original artwork intact: it already contains its own characters,
+    // lighting and perspective. Avoid pasting a differently rendered figure on top.
     // Electricity traces the actual machine instead of unrelated screen-space ornaments.
     const conduit=this.add.graphics().setDepth(7);
     const dot=this.make.graphics({x:0,y:0});dot.fillStyle(0xa5ffff);dot.fillCircle(4,4,4);dot.generateTexture('chaos-spark',8,8);dot.destroy();
@@ -191,14 +185,12 @@ class Laboratory extends Phaser.Scene {
     }
   }
   private hotspot(x:number,y:number,r:number,label:string,action:()=>void){
-    const ring=this.add.circle(x,y,r,0xffe2a0,.07).setStrokeStyle(3,0xffd78b,.65).setDepth(10).setInteractive({useHandCursor:true});
-    this.tweens.add({targets:ring,alpha:.35,scale:1.08,duration:1250,yoyo:true,repeat:-1});
-    ring.on('pointerdown',action);
-    ring.setData('accessibleLabel',label);
-    ring.on('pointerover',()=>{this.tweens.add({targets:ring,scale:1.18,alpha:.85,duration:160});});
-    ring.on('pointerout',()=>{this.tweens.add({targets:ring,scale:1,alpha:.35,duration:200});});
-    this.markers.push(ring);
-    return ring;
+    // Invisible hit target: the artwork itself remains a single seamless image.
+    const hit=this.add.zone(x,y,r*2,r*2).setDepth(17).setInteractive({useHandCursor:true});
+    hit.on('pointerdown',action);
+    hit.setData('accessibleLabel',label);
+    this.markers.push(hit);
+    return hit;
   }
   private clearMarkers(){for(const m of this.markers)m.destroy();this.markers=[];}
   private drawHotspots(){
